@@ -1,14 +1,8 @@
-/*
-PortfolioNeo.jsx
-Futuristic tech-designer themed React + Tailwind portfolio for Aayush Niure
-Enhanced with animations, glassmorphism, neon gradients, 3D-style hero, and interactive background.
-*/
-
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 
 // Typing effect hook
-function useTyping(texts, speed = 100, pause = 1500) {
+function useTyping(texts, speed = 100) {
   const [index, setIndex] = useState(0);
   const [subIndex, setSubIndex] = useState(0);
   const [reverse, setReverse] = useState(false);
@@ -37,9 +31,14 @@ function useTyping(texts, speed = 100, pause = 1500) {
 }
 
 export default function PortfolioNeo() {
-  const typed = useTyping(["Designer.", "Developer.", "Tech Explorer.", "Visual Storyteller."], 80);
+  const typed = useTyping([
+    "Designer.",
+    "Developer.",
+    "Tech Explorer.",
+    "Visual Storyteller."
+  ], 80);
+
   const [theme, setTheme] = useState("dark");
-  const [modalProject, setModalProject] = useState(null);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -93,7 +92,7 @@ export default function PortfolioNeo() {
         </nav>
       </header>
 
-      {/* HERO SECTION */}
+      {/* Hero */}
       <main className="relative z-10 max-w-7xl mx-auto px-6 py-20 text-center md:text-left">
         <motion.section initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1 }}>
           <h1 className="text-5xl md:text-6xl font-extrabold">
@@ -107,12 +106,10 @@ export default function PortfolioNeo() {
             <a href="#contact" className="px-6 py-3 border border-indigo-400 rounded-full hover:bg-indigo-500/20 transition">Hire Me</a>
           </div>
         </motion.section>
-
-        {/* Floating tech ring */}
         <div className="absolute top-10 right-10 w-60 h-60 border border-indigo-500/30 rounded-full blur-lg animate-spin-slow" />
       </main>
 
-      {/* ABOUT SECTION */}
+      {/* About Section */}
       <section id="about" className="relative z-10 max-w-6xl mx-auto px-6 py-16">
         <h2 className="text-3xl font-bold mb-8 text-pink-400">About Me</h2>
         <div className="grid md:grid-cols-2 gap-10">
@@ -133,7 +130,7 @@ export default function PortfolioNeo() {
         </div>
       </section>
 
-      {/* WORK SECTION */}
+      {/* Work Section */}
       <section id="works" className="relative z-10 max-w-7xl mx-auto px-6 py-20">
         <h2 className="text-3xl font-bold text-indigo-400 mb-10">Featured Projects</h2>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -154,7 +151,7 @@ export default function PortfolioNeo() {
         </div>
       </section>
 
-      {/* CONTACT SECTION */}
+      {/* Contact Section */}
       <section id="contact" className="relative z-10 max-w-6xl mx-auto px-6 py-20">
         <h2 className="text-3xl font-bold mb-6 text-pink-400">Let’s Connect</h2>
         <div className="grid md:grid-cols-2 gap-10">
@@ -168,16 +165,19 @@ export default function PortfolioNeo() {
             <p className="text-gray-400 mb-3">Want to collaborate or chat about design, tech, or motion?</p>
             <a href="mailto:hello@aayushniure.com" className="text-lg text-pink-400 underline">hello@aayushniure.com</a>
             <div className="mt-4 flex gap-4">
-              <a href="#" className="hover:text-indigo-400">Instagram</a>
-              <a href="#" className="hover:text-indigo-400">YouTube</a>
-              <a href="#" className="hover:text-indigo-400">Dribbble</a>
+              {/* Buttons instead of empty hrefs */}
+              <button onClick={() => window.open("https://instagram.com", "_blank")} className="hover:text-indigo-400">Instagram</button>
+              <button onClick={() => window.open("https://youtube.com", "_blank")} className="hover:text-indigo-400">YouTube</button>
+              <button onClick={() => window.open("https://dribbble.com", "_blank")} className="hover:text-indigo-400">Dribbble</button>
             </div>
           </div>
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer className="text-center py-8 text-gray-500 text-sm relative z-10">© {new Date().getFullYear()} Aayush Niure — Built with React & Motion ✨</footer>
+      {/* Footer */}
+      <footer className="text-center py-8 text-gray-500 text-sm relative z-10">
+        © {new Date().getFullYear()} Aayush Niure — Built with React & Motion ✨
+      </footer>
     </div>
   );
 }
