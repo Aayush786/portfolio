@@ -6,6 +6,7 @@ Enhanced with animations, glassmorphism, neon gradients, 3D-style hero, and inte
 
 import React, { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
+import './App.css';
 
 // Typing effect hook
 function useTyping(texts, speed = 100, pause = 1500) {
@@ -51,7 +52,9 @@ function Cursor() {
     function onMove(e) {
       const x = e.clientX;
       const y = e.clientY;
-      el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+      // position via left/top so CSS translate(-50%,-50%) keeps it centered
+      el.style.left = x + 'px';
+      el.style.top = y + 'px';
       const node = document.elementFromPoint(x, y);
       if (isInteractive(node)) el.classList.add('cursor--hover');
       else el.classList.remove('cursor--hover');
