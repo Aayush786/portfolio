@@ -224,7 +224,7 @@ export default function App() {
       title: "Mates International",
       desc: "Creative graphic designer handling branding, digital campaigns, and promotional visuals.",
       img: "https://i.postimg.cc/qq5GD5sq/mates.png",
-      tags: ["Graphic Design", "Branding", "Marketing"],
+      tags: ["Graphic Design", "Branding", "Social MediaMarketing"],
     },
     {
       id: 2,
