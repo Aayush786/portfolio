@@ -75,3 +75,31 @@
 /* hide default cursor so custom cursor is visible; keep text inputs usable */
 body { cursor: none; }
 input, textarea, select { cursor: text; }
+
+/* Floating canvas styling */
+.floating-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* subtle circular orbit for background gradients */
+.antigrav-bg {
+  animation: bg-orbit 30s linear infinite;
+  transform-origin: center center;
+  /* soften edges and corners */
+  filter: blur(22px);
+  opacity: 0.92;
+}
+
+@keyframes bg-orbit {
+  0% { transform: translate(-1.5%, -1.5%) rotate(0deg); }
+  25% { transform: translate(1.5%, -1.5%) rotate(90deg); }
+  50% { transform: translate(1.5%, 1.5%) rotate(180deg); }
+  75% { transform: translate(-1.5%, 1.5%) rotate(270deg); }
+  100% { transform: translate(-1.5%, -1.5%) rotate(360deg); }
+}

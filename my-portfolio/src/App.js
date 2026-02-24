@@ -71,6 +71,124 @@ function Cursor() {
   return <div ref={ref} className="custom-cursor" aria-hidden="true" />;
 }
 
+// Antigravity floating particle field (canvas)
+function FloatingField() {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let dpi = window.devicePixelRatio || 1;
+
+    function resize() {
+      const w = Math.max(window.innerWidth, canvas.clientWidth || 0);
+      const h = Math.max(window.innerHeight, canvas.clientHeight || 0);
+      canvas.width = Math.floor(w * dpi);
+      canvas.height = Math.floor(h * dpi);
+      canvas.style.width = '100vw';
+      canvas.style.height = '100vh';
+    }
+
+    resize();
+    let W = canvas.width;
+    let H = canvas.height;
+
+    let particles = [];
+    function populateParticles() {
+      particles.length = 0;
+      const area = (canvas.width / dpi) * (canvas.height / dpi);
+      // denser but very small particles
+      const COUNT = Math.max(100, Math.floor(area / 6000));
+      for (let i = 0; i < COUNT; i++) {
+        particles.push({
+          x: Math.random() * W,
+          y: Math.random() * H,
+          vx: (Math.random() - 0.5) * 0.02,
+          vy: -(0.01 + Math.random() * 0.03),
+          size: 0.3 + Math.random() * 0.6,
+          alpha: 0.08 + Math.random() * 0.18,
+        });
+      }
+    }
+
+    populateParticles();
+
+    let mouse = { x: -9999, y: -9999 };
+    function onMove(e) {
+      mouse.x = e.clientX * dpi;
+      mouse.y = e.clientY * dpi;
+    }
+
+    window.addEventListener('mousemove', onMove);
+
+    let raf = null;
+    function step() {
+      ctx.clearRect(0, 0, W, H);
+      for (const p of particles) {
+        // gentle upward acceleration (antigravity) — very subtle
+        p.vy -= 0.00035;
+        // apply velocity
+        p.x += p.vx;
+        p.y += p.vy;
+
+        // wrap horizontally
+        if (p.x < -20) p.x = W + 20;
+        if (p.x > W + 20) p.x = -20;
+
+        // recycle when too far above
+        if (p.y < -40) {
+          p.y = H + Math.random() * 40;
+          p.vy = -(0.2 + Math.random() * 0.8);
+          p.x = Math.random() * W;
+        }
+
+        // mouse repulsion (makes objects dodge cursor)
+        const dx = p.x - mouse.x;
+        const dy = p.y - mouse.y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        const R = 60 * dpi;
+        if (dist < R) {
+          const force = (1 - dist / R) * 0.45;
+          p.vx += (dx / dist) * force * 0.04;
+          p.vy += (dy / dist) * force * 0.04;
+        }
+
+        // draw glow particle
+        ctx.beginPath();
+        const radius = Math.max(4, p.size * 4);
+        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, radius);
+        g.addColorStop(0, `rgba(16,185,129,${Math.max(0.12, p.alpha)})`);
+        g.addColorStop(0.5, `rgba(50,205,150,${Math.max(0.06, p.alpha * 0.5)})`);
+        g.addColorStop(1, 'rgba(16,24,32,0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(p.x - radius, p.y - radius, radius * 2, radius * 2);
+      }
+      raf = requestAnimationFrame(step);
+    }
+
+    // handle resize dynamically
+    const onResize = () => {
+      dpi = window.devicePixelRatio || 1;
+      resize();
+      W = canvas.width;
+      H = canvas.height;
+      populateParticles();
+    };
+
+    window.addEventListener('resize', onResize);
+    raf = requestAnimationFrame(step);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('resize', onResize);
+    };
+  }, []);
+
+  return <canvas ref={ref} className="floating-canvas" aria-hidden="true" />;
+}
+
 export default function PortfolioNeo() {
   const typed = useTyping(["Designer.", "Developer.", "Tech Explorer.", "Visual Storyteller."], 80);
   const [theme, setTheme] = useState("dark");
@@ -107,8 +225,9 @@ export default function PortfolioNeo() {
   return (
     <div className="relative overflow-hidden min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 text-gray-200">
       <Cursor />
+      <FloatingField />
       {/* Animated background */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(99,102,241,0.15),transparent_40%),radial-gradient(circle_at_80%_80%,rgba(16,185,129,0.15),transparent_40%)] animate-pulse"></div>
+      <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_20%_20%,rgba(99,102,241,0.15),transparent_40%),radial-gradient(circle_at_80%_80%,rgba(16,185,129,0.15),transparent_40%)] antigrav-bg"></div>
 
       {/* Navbar */}
       <header className="relative z-10 max-w-7xl mx-auto flex justify-between items-center p-6">
