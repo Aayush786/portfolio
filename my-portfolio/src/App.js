@@ -4,7 +4,7 @@ Futuristic tech-designer themed React + Tailwind portfolio for Aayush Niure
 Enhanced with animations, glassmorphism, neon gradients, 3D-style hero, and interactive background.
 */
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 
 // Typing effect hook
@@ -34,6 +34,38 @@ function useTyping(texts, speed = 100, pause = 1500) {
   }, []);
 
   return texts[index].substring(0, subIndex) + (blink ? "|" : " ");
+}
+
+// Custom cursor that follows the mouse and highlights over interactive elements
+function Cursor() {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    function isInteractive(node) {
+      return node && node.closest && node.closest('a,button,input,textarea,select,[role="button"],[data-cursor-hover]');
+    }
+
+    function onMove(e) {
+      const x = e.clientX;
+      const y = e.clientY;
+      el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+      const node = document.elementFromPoint(x, y);
+      if (isInteractive(node)) el.classList.add('cursor--hover');
+      else el.classList.remove('cursor--hover');
+    }
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseenter', onMove);
+    return () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseenter', onMove);
+    };
+  }, []);
+
+  return <div ref={ref} className="custom-cursor" aria-hidden="true" />;
 }
 
 export default function PortfolioNeo() {
@@ -71,6 +103,7 @@ export default function PortfolioNeo() {
 
   return (
     <div className="relative overflow-hidden min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 text-gray-200">
+      <Cursor />
       {/* Animated background */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(99,102,241,0.15),transparent_40%),radial-gradient(circle_at_80%_80%,rgba(236,72,153,0.15),transparent_40%)] animate-pulse"></div>
 
