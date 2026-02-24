@@ -9,7 +9,7 @@ module.exports = {
         pulse: "pulse 4s ease-in-out infinite",
       },
       boxShadow: {
-        neon: "0 0 20px rgba(236,72,153,0.6), 0 0 40px rgba(79,70,229,0.5)",
+        neon: "0 0 20px rgba(16,185,129,0.6), 0 0 40px rgba(79,70,229,0.5)",
       },
     },
   },
