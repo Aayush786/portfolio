@@ -240,7 +240,7 @@ export default function App() {
     },
     {
       id: 4,
-      title: "Yohoweb.com",
+      title: "Yohoweb",
       desc: "Crafted brand visuals and website graphic elements for client portfolios.",
       img: "https://i.postimg.cc/fyrvqrcR/yoho.png",
       tags: ["Logo Design", "Graphic Design"],
@@ -265,8 +265,17 @@ export default function App() {
       <Cursor />
       <FloatingField />
       <header className="relative z-10 max-w-7xl mx-auto flex justify-between items-center p-6">
-        <motion.div whileHover={{ scale: 1.05 }} className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-emerald-500 flex items-center justify-center font-bold">AN</div>
+        <motion.div
+          whileHover={{ scale: 1.05 }}
+          className="flex items-center gap-3 cursor-pointer"
+          role="button"
+          title="Go to homepage"
+          data-cursor-hover
+          onClick={() => { window.location.href = '/'; }}
+        >
+            <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-tr from-indigo-500 to-emerald-500 flex items-center justify-center">
+              <img src="https://i.postimg.cc/9QYDWNM7/logo.png" alt="AN logo" className="w-full h-full object-cover" />
+            </div>
           <div>
             <h1 className="text-lg font-semibold">Aayush Niure</h1>
             <p className="text-xs text-gray-400">Freelancer / Graphic Designer / Video Editor</p>
@@ -388,6 +397,45 @@ export default function App() {
                   </a>
                   <a
                     href="https://matesedu.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1 bg-black/50 text-white rounded-md text-sm backdrop-blur-sm hover:bg-indigo-500/80"
+                  >
+                    Web
+                  </a>
+                </div>
+              )}
+
+              {p.id === 2 && (
+                <div className="absolute top-3 right-3 flex gap-2 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200">
+                  <a
+                    href="https://themenepal.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1 bg-black/50 text-white rounded-md text-sm backdrop-blur-sm hover:bg-indigo-500/80"
+                  >
+                    Web
+                  </a>
+                </div>
+              )}
+
+              {p.id === 3 && (
+                <div className="absolute top-3 right-3 flex gap-2 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200">
+                  <a
+                    href="https://surkhetsoft.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1 bg-black/50 text-white rounded-md text-sm backdrop-blur-sm hover:bg-indigo-500/80"
+                  >
+                    Web
+                  </a>
+                </div>
+              )}
+
+              {p.id === 4 && (
+                <div className="absolute top-3 right-3 flex gap-2 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200">
+                  <a
+                    href="https://yohoweb.com/"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="px-3 py-1 bg-black/50 text-white rounded-md text-sm backdrop-blur-sm hover:bg-indigo-500/80"
