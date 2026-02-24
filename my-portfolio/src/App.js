@@ -7,6 +7,7 @@ Enhanced with animations, glassmorphism, neon gradients, 3D-style hero, and inte
 import React, { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import './App.css';
+import Gallery from './Gallery';
 
 // Typing effect hook
 function useTyping(texts, speed = 100, pause = 1500) {
@@ -192,6 +193,7 @@ function FloatingField() {
 export default function App() {
   const typed = useTyping(["Graphic Designer.", "Video Editor.", "Social Media Marketer.", "Creative Thinker."], 80);
   const [theme, setTheme] = useState("dark");
+  const [view, setView] = useState('home');
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -247,6 +249,109 @@ export default function App() {
     },
   ];
 
+  const matesImages = [
+    "https://i.postimg.cc/QtCpRrXj/1study-in-canada.png",
+    "https://i.postimg.cc/x8bL1yJb/5.png",
+    "https://i.postimg.cc/xjW4y6RQ/aus-uk-assessment.png",
+    "https://i.postimg.cc/NFrRj79m/basanta-pannchami.png",
+    "https://i.postimg.cc/T2ysDznD/best-time.png",
+    "https://i.postimg.cc/Y2Jsfd3S/bhanu-jayanti.png",
+    "https://i.postimg.cc/s2VP4hqz/business-onshore-aus.png",
+    "https://i.postimg.cc/mhfCzzC6/fair.png",
+    "https://i.postimg.cc/DftMdxgK/friendship-day.png",
+    "https://i.postimg.cc/QNRykfbF/guru-purnima-2082.png",
+    "https://i.postimg.cc/HxnQfCTR/gyalpo-lhosar.png",
+    "https://i.postimg.cc/JhPN6hCy/ielts-ktm.png",
+    "https://i.postimg.cc/fbw7f9pd/ielts-pte-ready.png",
+    "https://i.postimg.cc/HLBwZL18/it-onshore.png",
+    "https://i.postimg.cc/667PvkCz/jitiya-parva.png",
+    "https://i.postimg.cc/BZ8zKrx9/kushe-aunshi.png",
+    "https://i.postimg.cc/Bb12ncLM/maghe-sakranti.png",
+    "https://i.postimg.cc/qRq89dkV/maha-shivratri.png",
+    "https://i.postimg.cc/nzrv6tnW/match-day-nep-italy.png",
+    "https://i.postimg.cc/Pq2W3qn4/prajatantra-diwas.png",
+    "https://i.postimg.cc/5jdLYYLp/prithcvi.png",
+    "https://i.postimg.cc/gk8BM3Sc/sagar-gridhar.png",
+    "https://i.postimg.cc/XJPwWDJX/sahid-diwas.png",
+    "https://i.postimg.cc/YjKYGGQM/sit-with-us.png",
+    "https://i.postimg.cc/SRzcx72g/sonam-lhosar.png",
+    "https://i.postimg.cc/BZdVcmCV/study-abroad.png",
+    "https://i.postimg.cc/jqW17pyy/study-in-aus-jan-intake.png",
+    "https://i.postimg.cc/gJ7vpBJc/study-in-canada.png",
+    "https://i.postimg.cc/HjDXccbV/study-in-canada-jan-2026.png",
+    "https://i.postimg.cc/j51zTk5b/study-in-uk.png",
+    "https://i.postimg.cc/CdTkBBbK/study-in-uk-masters.png",
+    "https://i.postimg.cc/c6ywggwX/topi-diwas.png",
+    "https://i.postimg.cc/s1d7QQ78/udauli-prava.png",
+    "https://i.postimg.cc/qgVyhh2p/uk-study.png",
+    "https://i.postimg.cc/PfL7wg1M/viswa-karma-puja.png",
+  ];
+
+  const themeNepalImages = [
+    "https://i.postimg.cc/ZnMZVpw5/11111monsooon.png",
+    "https://i.postimg.cc/pr6xqzsM/1mojito.png",
+    "https://i.postimg.cc/nVRHFfpQ/delicious-meals.png",
+    "https://i.postimg.cc/Pf3tXnTv/event-friday.png",
+    "https://i.postimg.cc/FzBmD3Tt/ghode-jatra-cosme.png",
+    "https://i.postimg.cc/2yKm2h0f/jhol-momo.png",
+    "https://i.postimg.cc/HWZpY1dQ/prajatantra-cosme.png",
+    "https://i.postimg.cc/4ySZBVWk/thakali-khana.png",
+    "https://i.postimg.cc/d3xv4r5Q/womens-day.png",
+    "https://i.postimg.cc/qvfHqkY6/1annapurna-base-camp.png",
+    "https://i.postimg.cc/VkyPvYTJ/eco-holi.png",
+    "https://i.postimg.cc/vZRwTQjh/eco-prajatantra.png",
+    "https://i.postimg.cc/VkyPvYTb/ghode-jatra-eco.png",
+    "https://i.postimg.cc/FHtXz9qd/trip-to-ktm.png",
+    "https://i.postimg.cc/qqCZHKpb/heritage-ghode-jatra.png",
+    "https://i.postimg.cc/kGthPS7T/heritage-holi.png",
+    "https://i.postimg.cc/1XNY1FyK/prajatantra-heritage.png",
+    "https://i.postimg.cc/0jJH1S9Z/valentines-day.png",
+    "https://i.postimg.cc/4yVkbqHB/1Homeeloan.png",
+    "https://i.postimg.cc/1Xwhc2Vw/dream-house-with-no-boundry.png",
+    "https://i.postimg.cc/mkCfNJ19/holi-homeloan.png",
+    "https://i.postimg.cc/wML8cZRy/home-is-more-than-a-place.png",
+    "https://i.postimg.cc/ZnptF2vc/prajatantra-homeloan.png",
+    "https://i.postimg.cc/brkcHWS9/tear-down.png",
+    "https://i.postimg.cc/2yhRFMLx/valentine-day.png",
+    "https://i.postimg.cc/ZnptF2vv/we-deliver-commitment.png",
+    "https://i.postimg.cc/QMy2Lhpd/14-feb.png",
+    "https://i.postimg.cc/8C52njrs/from-hiragana-to-japanese.png",
+    "https://i.postimg.cc/PqxgFP8q/gyalo-ixas.png",
+    "https://i.postimg.cc/fbrG4DxT/hw-to-pass.png",
+    "https://i.postimg.cc/FKRMn7JR/miracle-meme.png",
+    "https://i.postimg.cc/CK136zfx/prajatantra-ixas.png",
+    "https://i.postimg.cc/xd4wrnK8/ready.png",
+    "https://i.postimg.cc/fbrG4DxM/womens-day.png",
+    "https://i.postimg.cc/g0TC9mv0/work-hard.png",
+    "https://i.postimg.cc/ZqCQx215/Artboard-1.png",
+    "https://i.postimg.cc/25Vt7MP6/bangor-uni.png",
+    "https://i.postimg.cc/JhGF5v90/ielts-pte-masters.png",
+    "https://i.postimg.cc/W4hywCQp/ktm-holi.png",
+    "https://i.postimg.cc/mrtnyJ0H/uni-of-gloucestershire.png",
+    "https://i.postimg.cc/cL59CT6m/bulk-sms.png",
+    "https://i.postimg.cc/pL1GrkyC/bulk-smssss.png",
+    "https://i.postimg.cc/7ZQshXbX/ghode-smaya.png",
+    "https://i.postimg.cc/sg06xK10/samaya-prajatantra.png",
+    "https://i.postimg.cc/y8rQxnWL/sms-ghode.png",
+    "https://i.postimg.cc/rpBfCmGX/holi-pasal.png",
+    "https://i.postimg.cc/N03d7M8h/valentines-day-sms-pasal.png",
+    "https://i.postimg.cc/bv7mHJ0f/womens-dday.png",
+    "https://i.postimg.cc/GhLqj6Dn/admission-open-bsc-health.png",
+    "https://i.postimg.cc/15mJKbFP/cyprus.png",
+    "https://i.postimg.cc/ZKbVLXNm/study-in-uk.png",
+    "https://i.postimg.cc/28k2xgWD/toppers-ghode.png",
+    "https://i.postimg.cc/kGfNZXby/1Smooth-visa-approved.png",
+    "https://i.postimg.cc/7hm1cY29/big-success.png",
+    "https://i.postimg.cc/FzDbqsLG/interactive-learning.png",
+    "https://i.postimg.cc/FzDbqsLZ/japanese-dream-starts-here.png",
+    "https://i.postimg.cc/gjNy5kZ1/Smooth-visa-approved.png",
+    "https://i.postimg.cc/7L034NzG/Ghode-unique.png",
+    "https://i.postimg.cc/R0K7mTtf/masters-in-uk.png",
+    "https://i.postimg.cc/d0r2F9C7/sept-intak.png",
+    "https://i.postimg.cc/nLB4x1mD/study-in-aus-aug-july.png",
+    "https://i.postimg.cc/rpx1T94G/valentiesday.png",
+  ];
+
   const education = [
     {
       title: "Bachelor’s in Computer Engineering",
@@ -282,7 +387,8 @@ export default function App() {
           </div>
         </motion.div>
         <nav className="flex items-center gap-5 text-sm">
-          <a href="#works" className="hover:text-emerald-400">Works</a>
+          <button onClick={() => setView('home')} className="hover:text-emerald-400">Home</button>
+          <button onClick={() => setView('gallery')} className="hover:text-emerald-400">Gallery</button>
           <a href="#about" className="hover:text-emerald-400">About</a>
           <a href="#education" className="hover:text-emerald-400">Education</a>
           <a href="#contact" className="hover:text-emerald-400">Contact</a>
@@ -292,200 +398,208 @@ export default function App() {
         </nav>
       </header>
 
-      {/* HERO */}
-      <main className="relative z-10 max-w-7xl mx-auto px-6 py-20 text-center md:text-left pop-on-hover">
-        <motion.section initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1 }}>
-          <h1 className="text-5xl md:text-6xl font-extrabold">
-            Hi, I’m <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-emerald-400">Aayush</span>
-          </h1>
-          <p className="mt-4 text-xl text-gray-400">
-            A creative mind crafting designs, videos, and campaigns as a <span className="font-mono text-emerald-400">{typed}</span>
-          </p>
-          <div className="mt-6 flex flex-wrap gap-4 justify-center md:justify-start">
-            <motion.a
-              href="#works"
-              whileHover={{ scale: 1.03, backgroundColor: 'rgba(255,255,255,0.03)' }}
-              transition={{ duration: 0.25 }}
-              className="px-6 py-3 bg-emerald-500 text-white rounded-full shadow"
-            >
-              View My Work
-            </motion.a>
-            <motion.a
-              href="#contact"
-              whileHover={{ scale: 1.03, backgroundColor: 'rgba(255,255,255,0.03)' }}
-              transition={{ duration: 0.25 }}
-              className="px-6 py-3 border border-indigo-400 rounded-full"
-            >
-              Hire Me
-            </motion.a>
-          </div>
-        </motion.section>
-      </main>
+      {/* HERO / Sections (home) or Gallery */}
+      {view === 'gallery' ? (
+        <Gallery projects={projects} matesImages={matesImages} themeImages={themeNepalImages} onBack={() => setView('home')} />
+      ) : (
+        <>
+          {/* HERO */}
+          <main className="relative z-10 max-w-7xl mx-auto px-6 py-20 text-center md:text-left pop-on-hover">
+            <motion.section initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1 }}>
+              <h1 className="text-5xl md:text-6xl font-extrabold">
+                Hi, I’m <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-emerald-400">Aayush</span>
+              </h1>
+              <p className="mt-4 text-xl text-gray-400">
+                A creative mind crafting designs, videos, and campaigns as a <span className="font-mono text-emerald-400">{typed}</span>
+              </p>
+              <div className="mt-6 flex flex-wrap gap-4 justify-center md:justify-start">
+                <motion.button
+                  onClick={() => setView('gallery')}
+                  whileHover={{ scale: 1.03, backgroundColor: 'rgba(255,255,255,0.03)' }}
+                  transition={{ duration: 0.25 }}
+                  className="px-6 py-3 bg-emerald-500 text-white rounded-full shadow"
+                >
+                  View My Work
+                </motion.button>
+                <motion.a
+                  href="#contact"
+                  whileHover={{ scale: 1.03, backgroundColor: 'rgba(255,255,255,0.03)' }}
+                  transition={{ duration: 0.25 }}
+                  className="px-6 py-3 border border-indigo-400 rounded-full"
+                >
+                  Hire Me
+                </motion.a>
+              </div>
+            </motion.section>
+          </main>
 
-      {/* ABOUT */}
-      <section id="about" className="relative z-10 max-w-6xl mx-auto px-6 py-16 pop-on-hover">
-        <h2 className="text-3xl font-bold mb-8 text-emerald-400">About Me</h2>
-        <div className="grid md:grid-cols-2 gap-10">
-          <div className="bg-white/5 p-6 rounded-2xl backdrop-blur-md border border-white/10">
-            <p className="leading-relaxed">
-              I’m a Nepal-based <span className="text-indigo-400">Graphic Designer, Video Editor,</span> and <span className="text-indigo-400">Social Media Marketer</span> with experience in educational and tech-based industries. I blend visuals, motion, and strategy to build creative brand identities.
-            </p>
-            <p className="mt-3 text-gray-400 text-sm">
-              I’ve worked with multiple creative teams and helped brands visually communicate their stories through design and content.
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <Skill title="Graphic Design" level={95} />
-            <Skill title="Video Editing" level={90} />
-            <Skill title="Social Media" level={88} />
-            <Skill title="Motion Graphics" level={85} />
-          </div>
-        </div>
-      </section>
-{/* EDUCATION (Neon Timeline) */}
-<section id="education" className="relative z-10 max-w-6xl mx-auto px-6 py-20 pop-on-hover">
-  <h2 className="text-3xl font-bold mb-12 text-indigo-400 text-center">Education</h2>
+          {/* ABOUT */}
+          <section id="about" className="relative z-10 max-w-6xl mx-auto px-6 py-16 pop-on-hover">
+            <h2 className="text-3xl font-bold mb-8 text-emerald-400">About Me</h2>
+            <div className="grid md:grid-cols-2 gap-10">
+              <div className="bg-white/5 p-6 rounded-2xl backdrop-blur-md border border-white/10">
+                <p className="leading-relaxed">
+                  I’m a Nepal-based <span className="text-indigo-400">Graphic Designer, Video Editor,</span> and <span className="text-indigo-400">Social Media Marketer</span> with experience in educational and tech-based industries. I blend visuals, motion, and strategy to build creative brand identities.
+                </p>
+                <p className="mt-3 text-gray-400 text-sm">
+                  I’ve worked with multiple creative teams and helped brands visually communicate their stories through design and content.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Skill title="Graphic Design" level={95} />
+                <Skill title="Video Editing" level={90} />
+                <Skill title="Social Media" level={88} />
+                <Skill title="Motion Graphics" level={85} />
+              </div>
+            </div>
+          </section>
 
-  <div className="relative border-l-2 border-indigo-500/30 pl-8 space-y-12">
-    {education.map((edu, i) => (
-      <motion.div
-        key={i}
-        whileHover={{ scale: 1.03, backgroundColor: "rgba(255,255,255,0.05)" }}
-        transition={{ duration: 0.3 }}
-        className="relative bg-white/5 p-6 rounded-xl border border-white/10 backdrop-blur-md shadow-lg"
-      >
-        {/* Glowing dot */}
-        <motion.div
-          className="absolute -left-5 top-6 w-4 h-4 rounded-full bg-gradient-to-r from-indigo-500 to-emerald-400 shadow-lg"
-          animate={{ scale: [1, 1.3, 1] }}
-          transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-        />
+          {/* EDUCATION (Neon Timeline) */}
+          <section id="education" className="relative z-10 max-w-6xl mx-auto px-6 py-20 pop-on-hover">
+            <h2 className="text-3xl font-bold mb-12 text-indigo-400 text-center">Education</h2>
 
-        <h3 className="text-xl font-semibold text-emerald-400">{edu.title}</h3>
-        <p className="text-gray-300 text-sm mt-1">{edu.school}</p>
-        <p className="text-gray-500 text-xs mt-2 italic">{edu.year}</p>
-      </motion.div>
-    ))}
+            <div className="relative border-l-2 border-indigo-500/30 pl-8 space-y-12">
+              {education.map((edu, i) => (
+                <motion.div
+                  key={i}
+                  whileHover={{ scale: 1.03, backgroundColor: "rgba(255,255,255,0.05)" }}
+                  transition={{ duration: 0.3 }}
+                  className="relative bg-white/5 p-6 rounded-xl border border-white/10 backdrop-blur-md shadow-lg"
+                >
+                  {/* Glowing dot */}
+                  <motion.div
+                    className="absolute -left-5 top-6 w-4 h-4 rounded-full bg-gradient-to-r from-indigo-500 to-emerald-400 shadow-lg"
+                    animate={{ scale: [1, 1.3, 1] }}
+                    transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                  />
 
-    {/* vertical glowing line accent */}
-    <div className="absolute top-0 left-0 w-1 bg-gradient-to-b from-indigo-500 via-emerald-400 to-transparent blur-md" />
-  </div>
-</section>
+                  <h3 className="text-xl font-semibold text-emerald-400">{edu.title}</h3>
+                  <p className="text-gray-300 text-sm mt-1">{edu.school}</p>
+                  <p className="text-gray-500 text-xs mt-2 italic">{edu.year}</p>
+                </motion.div>
+              ))}
 
-      {/* WORKS */}
-      <section id="works" className="relative z-10 max-w-7xl mx-auto px-6 py-20 pop-on-hover">
-        <h2 className="text-3xl font-bold text-indigo-400 mb-10">Experience & Projects</h2>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {projects.map((p) => (
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              key={p.id}
-              className="relative group bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl overflow-hidden shadow-lg"
-            >
-              <img src={p.img} alt={p.title} className="h-48 w-full object-cover" />
+              {/* vertical glowing line accent */}
+              <div className="absolute top-0 left-0 w-1 bg-gradient-to-b from-indigo-500 via-emerald-400 to-transparent blur-md" />
+            </div>
+          </section>
 
-              {/* Hover actions for Mates International (FB + Web) */}
-              {p.id === 1 && (
-                <div className="absolute top-3 right-3 flex gap-2 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200">
-                  <a
-                    href="https://www.facebook.com/chitwanmates"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3 py-1 bg-black/50 text-white rounded-md text-sm backdrop-blur-sm hover:bg-emerald-500/90"
-                  >
-                    FB
-                  </a>
-                  <a
-                    href="https://matesedu.com/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3 py-1 bg-black/50 text-white rounded-md text-sm backdrop-blur-sm hover:bg-indigo-500/80"
-                  >
-                    Web
-                  </a>
-                </div>
-              )}
+          {/* WORKS */}
+          <section id="works" className="relative z-10 max-w-7xl mx-auto px-6 py-20 pop-on-hover">
+            <h2 className="text-3xl font-bold text-indigo-400 mb-10">Experience & Projects</h2>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+              {projects.map((p) => (
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  key={p.id}
+                  className="relative group bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl overflow-hidden shadow-lg"
+                >
+                  <img src={p.img} alt={p.title} className="h-48 w-full object-cover" />
 
-              {p.id === 2 && (
-                <div className="absolute top-3 right-3 flex gap-2 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200">
-                  <a
-                    href="https://themenepal.com/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3 py-1 bg-black/50 text-white rounded-md text-sm backdrop-blur-sm hover:bg-indigo-500/80"
-                  >
-                    Web
-                  </a>
-                </div>
-              )}
+                  {/* Hover actions for Mates International (FB + Web) */}
+                  {p.id === 1 && (
+                    <div className="absolute top-3 right-3 flex gap-2 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200">
+                      <a
+                        href="https://www.facebook.com/chitwanmates"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1 bg-black/50 text-white rounded-md text-sm backdrop-blur-sm hover:bg-emerald-500/90"
+                      >
+                        FB
+                      </a>
+                      <a
+                        href="https://matesedu.com/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1 bg-black/50 text-white rounded-md text-sm backdrop-blur-sm hover:bg-indigo-500/80"
+                      >
+                        Web
+                      </a>
+                    </div>
+                  )}
 
-              {p.id === 3 && (
-                <div className="absolute top-3 right-3 flex gap-2 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200">
-                  <a
-                    href="https://surkhetsoft.com/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3 py-1 bg-black/50 text-white rounded-md text-sm backdrop-blur-sm hover:bg-indigo-500/80"
-                  >
-                    Web
-                  </a>
-                </div>
-              )}
+                  {p.id === 2 && (
+                    <div className="absolute top-3 right-3 flex gap-2 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200">
+                      <a
+                        href="https://themenepal.com/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1 bg-black/50 text-white rounded-md text-sm backdrop-blur-sm hover:bg-indigo-500/80"
+                      >
+                        Web
+                      </a>
+                    </div>
+                  )}
 
-              {p.id === 4 && (
-                <div className="absolute top-3 right-3 flex gap-2 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200">
-                  <a
-                    href="https://yohoweb.com/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3 py-1 bg-black/50 text-white rounded-md text-sm backdrop-blur-sm hover:bg-indigo-500/80"
-                  >
-                    Web
-                  </a>
-                </div>
-              )}
+                  {p.id === 3 && (
+                    <div className="absolute top-3 right-3 flex gap-2 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200">
+                      <a
+                        href="https://surkhetsoft.com/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1 bg-black/50 text-white rounded-md text-sm backdrop-blur-sm hover:bg-indigo-500/80"
+                      >
+                        Web
+                      </a>
+                    </div>
+                  )}
 
-              <div className="p-4">
-                <h3 className="text-lg font-semibold text-emerald-400">{p.title}</h3>
-                <p className="text-sm text-gray-400 mt-2">{p.desc}</p>
-                <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                  {p.tags.map((t) => (
-                    <span key={t} className="px-2 py-1 bg-indigo-500/20 text-indigo-300 rounded-full">{t}</span>
-                  ))}
+                  {p.id === 4 && (
+                    <div className="absolute top-3 right-3 flex gap-2 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200">
+                      <a
+                        href="https://yohoweb.com/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1 bg-black/50 text-white rounded-md text-sm backdrop-blur-sm hover:bg-indigo-500/80"
+                      >
+                        Web
+                      </a>
+                    </div>
+                  )}
+
+                  <div className="p-4">
+                    <h3 className="text-lg font-semibold text-emerald-400">{p.title}</h3>
+                    <p className="text-sm text-gray-400 mt-2">{p.desc}</p>
+                    <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                      {p.tags.map((t) => (
+                        <span key={t} className="px-2 py-1 bg-indigo-500/20 text-indigo-300 rounded-full">{t}</span>
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </section>
+
+          {/* CONTACT */}
+          <section id="contact" className="relative z-10 max-w-6xl mx-auto px-6 py-20 pop-on-hover">
+            <h2 className="text-3xl font-bold mb-6 text-emerald-400">Let’s Connect</h2>
+            <div className="grid md:grid-cols-2 gap-10">
+              <form className="bg-white/5 p-6 rounded-2xl backdrop-blur-md border border-white/10">
+                <input className="w-full mb-4 p-3 bg-transparent border-b border-emerald-400 text-sm" placeholder="Your Name" />
+                <input className="w-full mb-4 p-3 bg-transparent border-b border-emerald-400 text-sm" placeholder="Your Email" />
+                <textarea rows="4" className="w-full mb-4 p-3 bg-transparent border-b border-emerald-400 text-sm" placeholder="Your Message"></textarea>
+                <motion.button
+                  whileHover={{ scale: 1.035, backgroundColor: 'rgba(255,255,255,0.03)' }}
+                  transition={{ duration: 0.25 }}
+                  className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-emerald-500 rounded-full shadow"
+                >
+                  Send Message
+                </motion.button>
+              </form>
+              <div className="flex flex-col justify-center">
+                <p className="text-gray-400 mb-3">Want to collaborate or chat about design, motion, or marketing?</p>
+                <a href="mailto:aayushniure48@gmail.com" className="text-lg text-emerald-400 underline">aayushniure48@gmail.com</a>
+                <div className="mt-4 flex gap-4">
+                  <a href="https://www.linkedin.com/in/aayush-niure-b71415267" className="hover:text-indigo-400">LinkedIn</a>
+                  <a href="#" className="hover:text-indigo-400">Instagram</a>
+                  <a href="#" className="hover:text-indigo-400">YouTube</a>
                 </div>
               </div>
-            </motion.div>
-          ))}
-        </div>
-      </section>
-
-      {/* CONTACT */}
-      <section id="contact" className="relative z-10 max-w-6xl mx-auto px-6 py-20 pop-on-hover">
-        <h2 className="text-3xl font-bold mb-6 text-emerald-400">Let’s Connect</h2>
-        <div className="grid md:grid-cols-2 gap-10">
-          <form className="bg-white/5 p-6 rounded-2xl backdrop-blur-md border border-white/10">
-            <input className="w-full mb-4 p-3 bg-transparent border-b border-emerald-400 text-sm" placeholder="Your Name" />
-            <input className="w-full mb-4 p-3 bg-transparent border-b border-emerald-400 text-sm" placeholder="Your Email" />
-            <textarea rows="4" className="w-full mb-4 p-3 bg-transparent border-b border-emerald-400 text-sm" placeholder="Your Message"></textarea>
-            <motion.button
-              whileHover={{ scale: 1.035, backgroundColor: 'rgba(255,255,255,0.03)' }}
-              transition={{ duration: 0.25 }}
-              className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-emerald-500 rounded-full shadow"
-            >
-              Send Message
-            </motion.button>
-          </form>
-          <div className="flex flex-col justify-center">
-            <p className="text-gray-400 mb-3">Want to collaborate or chat about design, motion, or marketing?</p>
-            <a href="mailto:aayushniure48@gmail.com" className="text-lg text-emerald-400 underline">aayushniure48@gmail.com</a>
-            <div className="mt-4 flex gap-4">
-              <a href="https://www.linkedin.com/in/aayush-niure-b71415267" className="hover:text-indigo-400">LinkedIn</a>
-              <a href="#" className="hover:text-indigo-400">Instagram</a>
-              <a href="#" className="hover:text-indigo-400">YouTube</a>
             </div>
-          </div>
-        </div>
-      </section>
+          </section>
+        </>
+      )}
 
       <footer className="text-center py-8 text-gray-500 text-sm">© {new Date().getFullYear()} Aayush Niure — Designed with React & Motion ⚡</footer>
     </div>
