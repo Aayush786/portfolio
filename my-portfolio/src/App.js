@@ -483,6 +483,15 @@ export default function App() {
                 >
                   Hire Me
                 </motion.button>
+                <motion.a
+                  href="/Aayush Niure Resume.pdf"
+                  download
+                  whileHover={{ scale: 1.03, backgroundColor: 'rgba(255,255,255,0.03)' }}
+                  transition={{ duration: 0.25 }}
+                  className="px-6 py-3 border border-indigo-400 rounded-full btn-primary"
+                >
+                  Download Resume
+                </motion.a>
               </div>
             </motion.section>
           </main>
