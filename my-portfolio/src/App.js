@@ -5,6 +5,7 @@ Enhanced with animations, glassmorphism, neon gradients, 3D-style hero, and inte
 */
 
 import React, { useEffect, useState, useRef } from "react";
+import { Helmet } from "react-helmet";
 import { motion } from "framer-motion";
 import './App.css';
 import Gallery from './Gallery';
@@ -194,10 +195,37 @@ export default function App() {
   const typed = useTyping(["Graphic Designer.", "Video Editor.", "Social Media Marketer.", "Creative Thinker."], 80);
   const [theme, setTheme] = useState("dark");
   const [view, setView] = useState('home');
+  const [pendingScroll, setPendingScroll] = useState(null);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
   }, [theme]);
+
+  // Handle navigation to in-page sections even when currently in Gallery view
+  useEffect(() => {
+    if (!pendingScroll) return;
+    if (view === 'home') {
+      const id = pendingScroll;
+      setPendingScroll(null);
+      // small delay to ensure DOM is painted
+      requestAnimationFrame(() => {
+        const el = document.getElementById(id);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+  }, [view, pendingScroll]);
+
+  function handleNavTo(id) {
+    if (view === 'home') {
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      else setView('home');
+    } else {
+      // set the target then switch to home; effect will scroll once mounted
+      setPendingScroll(id);
+      setView('home');
+    }
+  }
 
   // Auto-assign pop-on-hover to buttons and button-like anchors
   useEffect(() => {
@@ -366,7 +394,33 @@ export default function App() {
   ];
 
   return (
-    <div className="relative overflow-hidden min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 text-gray-200">
+    <>
+      <Helmet>
+        <title>Aayush Niure – Graphic Designer & Video Editor</title>
+        <meta name="description" content="Aayush Niure – Freelance Graphic Designer, Video Editor, and Web Developer from Nepal. Explore my portfolio and services." />
+        <meta name="keywords" content="Aayush Niure, graphic designer, video editor, portfolio, freelancer, Nepal" />
+        <link rel="canonical" href="https://yourdomain.com/" />
+        <script type="application/ld+json">
+          {`{
+            "@context": "https://schema.org",
+            "@type": "Person",
+            "name": "Aayush Niure",
+            "jobTitle": "Graphic Designer & Video Editor",
+            "url": "https://yourdomain.com/",
+            "sameAs": [
+              "https://www.linkedin.com/in/aayush-niure-b71415267",
+              "https://www.behance.net/aayushniure",
+              "https://www.youtube.com/@meaayush4748"
+            ]
+          }`}
+        </script>
+      </Helmet>
+    <div className={`relative min-h-screen ${theme === 'dark' ? 'bg-gradient-to-br from-gray-900 via-black to-gray-800 text-gray-200 theme-dark' : 'bg-gradient-to-br from-white via-gray-100 to-gray-50 text-gray-900 theme-light'}`}>
+      {/* Background animated gradient blobs */}
+      <div className="antigrav-bg antigrav-bg--a" aria-hidden="true" />
+      <div className="antigrav-bg antigrav-bg--b" aria-hidden="true" />
+      {/* Subtle grid texture overlay */}
+      <div className="grid-overlay" aria-hidden="true" />
       <Cursor />
       <FloatingField />
       <header className="relative z-10 max-w-7xl mx-auto flex justify-between items-center p-6">
@@ -389,9 +443,9 @@ export default function App() {
         <nav className="flex items-center gap-5 text-sm">
           <button onClick={() => setView('home')} className="hover:text-emerald-400">Home</button>
           <button onClick={() => setView('gallery')} className="hover:text-emerald-400">Gallery</button>
-          <a href="#about" className="hover:text-emerald-400">About</a>
-          <a href="#education" className="hover:text-emerald-400">Education</a>
-          <a href="#contact" className="hover:text-emerald-400">Contact</a>
+          <button onClick={() => handleNavTo('about')} className="hover:text-emerald-400">About</button>
+          <button onClick={() => handleNavTo('education')} className="hover:text-emerald-400">Education</button>
+          <button onClick={() => handleNavTo('contact')} className="hover:text-emerald-400">Contact</button>
           <button onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="px-3 py-1 border rounded-md">
             {theme === "dark" ? "☀️" : "🌙"}
           </button>
@@ -417,18 +471,18 @@ export default function App() {
                   onClick={() => setView('gallery')}
                   whileHover={{ scale: 1.03, backgroundColor: 'rgba(255,255,255,0.03)' }}
                   transition={{ duration: 0.25 }}
-                  className="px-6 py-3 bg-emerald-500 text-white rounded-full shadow"
+                  className="px-6 py-3 bg-emerald-500 text-white rounded-full shadow btn-primary"
                 >
                   View My Work
                 </motion.button>
-                <motion.a
-                  href="#contact"
+                <motion.button
+                  onClick={() => handleNavTo('contact')}
                   whileHover={{ scale: 1.03, backgroundColor: 'rgba(255,255,255,0.03)' }}
                   transition={{ duration: 0.25 }}
-                  className="px-6 py-3 border border-indigo-400 rounded-full"
+                  className="px-6 py-3 border border-indigo-400 rounded-full btn-primary"
                 >
                   Hire Me
-                </motion.a>
+                </motion.button>
               </div>
             </motion.section>
           </main>
@@ -449,7 +503,7 @@ export default function App() {
                 <Skill title="Graphic Design" level={95} />
                 <Skill title="Video Editing" level={90} />
                 <Skill title="Social Media" level={88} />
-                <Skill title="Motion Graphics" level={85} />
+                <Skill title="Social Media Marketing" level={85} />
               </div>
             </div>
           </section>
@@ -582,7 +636,7 @@ export default function App() {
                 <motion.button
                   whileHover={{ scale: 1.035, backgroundColor: 'rgba(255,255,255,0.03)' }}
                   transition={{ duration: 0.25 }}
-                  className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-emerald-500 rounded-full shadow"
+                  className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-emerald-500 rounded-full shadow btn-primary"
                 >
                   Send Message
                 </motion.button>
@@ -592,8 +646,8 @@ export default function App() {
                 <a href="mailto:aayushniure48@gmail.com" className="text-lg text-emerald-400 underline">aayushniure48@gmail.com</a>
                 <div className="mt-4 flex gap-4">
                   <a href="https://www.linkedin.com/in/aayush-niure-b71415267" className="hover:text-indigo-400">LinkedIn</a>
-                  <a href="#" className="hover:text-indigo-400">Instagram</a>
-                  <a href="#" className="hover:text-indigo-400">YouTube</a>
+                  <a href="https://www.behance.net/aayushniure" className="hover:text-indigo-400">Behance</a>
+                  <a href="https://www.youtube.com/@meaayush4748" className="hover:text-indigo-400">YouTube</a>
                 </div>
               </div>
             </div>
@@ -601,8 +655,9 @@ export default function App() {
         </>
       )}
 
-      <footer className="text-center py-8 text-gray-500 text-sm">© {new Date().getFullYear()} Aayush Niure — Designed with React & Motion ⚡</footer>
+      <footer className="text-center py-8 text-gray-500 text-sm">© {new Date().getFullYear()} Aayush Niure </footer>
     </div>
+    </>
   );
 }
 
