@@ -4,6 +4,20 @@ module.exports = {
   darkMode: "class",
   theme: {
     extend: {
+      fontFamily: {
+        sans: [
+          'Space Grotesk',
+          'ui-sans-serif',
+          'system-ui',
+          '-apple-system',
+          'Segoe UI',
+          'Roboto',
+          'Helvetica Neue',
+          'Arial',
+          'Noto Sans',
+          'sans-serif',
+        ],
+      },
       animation: {
         "spin-slow": "spin 10s linear infinite",
         pulse: "pulse 4s ease-in-out infinite",
