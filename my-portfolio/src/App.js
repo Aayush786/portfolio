@@ -433,7 +433,7 @@ export default function App() {
           onClick={() => { window.location.href = '/'; }}
         >
             <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-tr from-indigo-500 to-emerald-500 flex items-center justify-center">
-              <img src="https://i.postimg.cc/9QYDWNM7/logo.png" alt="AN logo" className="w-full h-full object-cover" />
+              <img src="https://i.postimg.cc/ZqCT2mHw/logo.png" alt="AN logo" className="w-full h-full object-cover" />
             </div>
           <div>
             <h1 className="text-lg font-semibold">Aayush Niure</h1>
