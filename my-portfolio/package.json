@@ -4,7 +4,9 @@
   "private": true,
   "homepage": ".",
   "dependencies": {
+    "express": "^5.2.1",
     "framer-motion": "^10.12.16",
+    "helmet": "^8.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-helmet": "^6.1.0",
@@ -19,6 +21,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "start-server": "node server.js",
     "deploy": "vercel --prod"
   },
   "browserslist": {

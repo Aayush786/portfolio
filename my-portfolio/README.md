@@ -68,3 +68,37 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `npm run build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+---
+
+## Security Notes
+
+To protect against browser-based attacks, a small Express server using
+[helmet](https://github.com/helmetjs/helmet) is included (`server.js`).
+The configuration sets the following headers by default:
+
+- `Content-Security-Policy` (CSP) locking down sources to self and data
+- `X-Frame-Options: DENY` (blocks clickjacking)
+- `X-Content-Type-Options: nosniff` (prevents MIME-sniffing)
+- `Strict-Transport-Security` (HSTS, one year, includes sub‑domains)
+
+You can adjust or extend these rules in `server.js` or through your
+hosting/CDN provider. For static deployments (GitHub Pages, Netlify,
+Vercel etc.), configure equivalent headers via `_headers`, `netlify.toml`,
+or Vercel's edge-config.
+
+### Web Application Firewall (WAF)
+
+In addition to headers, using a WAF can block malicious traffic before it
+reaches this application. Popular managed options include:
+
+- **Cloudflare** – free tier available, easy DNS / proxy setup
+- **Sucuri Firewall** – paid service with malware scanning and DDoS
+  protection
+
+These services automatically block common bots, SQL‑injection/XSS payloads,
+and other automated attacks.
+
+For development, simply run `node server.js` after building, and the
+security headers will be active.
+
