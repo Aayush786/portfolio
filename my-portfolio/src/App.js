@@ -198,6 +198,9 @@ export default function App() {
   const [view, setView] = useState('home');
   const [pendingScroll, setPendingScroll] = useState(null);
   const [shuffledCarouselImages, setShuffledCarouselImages] = useState([]);
+  const [contactForm, setContactForm] = useState({ name: '', email: '', message: '' });
+  const [contactErrors, setContactErrors] = useState({});
+  const [contactSuccess, setContactSuccess] = useState('');
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -279,6 +282,38 @@ export default function App() {
       setPendingScroll(id);
       setView('home');
     }
+  }
+
+  function validateContactForm() {
+    const errors = {};
+    if (!contactForm.name.trim()) {
+      errors.name = 'Name is required.';
+    }
+    if (!contactForm.email.trim()) {
+      errors.email = 'Email is required.';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactForm.email)) {
+      errors.email = 'Enter a valid email address.';
+    }
+    if (!contactForm.message.trim()) {
+      errors.message = 'Message is required.';
+    }
+    setContactErrors(errors);
+    return Object.keys(errors).length === 0;
+  }
+
+  function handleContactSubmit(event) {
+    event.preventDefault();
+    if (!validateContactForm()) {
+      setContactSuccess('');
+      return;
+    }
+    setContactSuccess('Your message is ready to send!');
+    setContactForm({ name: '', email: '', message: '' });
+    setContactErrors({});
+  }
+
+  function handleContactChange(field, value) {
+    setContactForm((prev) => ({ ...prev, [field]: value }));
   }
 
   // Auto-assign pop-on-hover to buttons and button-like anchors
@@ -697,11 +732,39 @@ export default function App() {
           <section id="contact" className="relative z-10 max-w-6xl mx-auto px-6 py-20 pop-on-hover">
             <h2 className="text-3xl font-bold mb-6 text-emerald-400">Let’s Connect</h2>
             <div className="grid md:grid-cols-2 gap-10">
-              <form className="bg-white/5 p-6 rounded-2xl backdrop-blur-md border border-white/10">
-                <input className="w-full mb-4 p-3 bg-transparent border-b border-emerald-400 text-sm" placeholder="Your Name" />
-                <input className="w-full mb-4 p-3 bg-transparent border-b border-emerald-400 text-sm" placeholder="Your Email" />
-                <textarea rows="4" className="w-full mb-4 p-3 bg-transparent border-b border-emerald-400 text-sm" placeholder="Your Message"></textarea>
+              <form onSubmit={handleContactSubmit} className="bg-white/5 p-6 rounded-2xl backdrop-blur-md border border-white/10">
+                <div className="mb-4">
+                  <input
+                    value={contactForm.name}
+                    onChange={(e) => handleContactChange('name', e.target.value)}
+                    className="w-full p-3 bg-transparent border-b border-emerald-400 text-sm outline-none"
+                    placeholder="Your Name"
+                  />
+                  {contactErrors.name && <p className="mt-2 text-xs text-rose-400">{contactErrors.name}</p>}
+                </div>
+                <div className="mb-4">
+                  <input
+                    value={contactForm.email}
+                    onChange={(e) => handleContactChange('email', e.target.value)}
+                    className="w-full p-3 bg-transparent border-b border-emerald-400 text-sm outline-none"
+                    placeholder="Your Email"
+                    type="email"
+                  />
+                  {contactErrors.email && <p className="mt-2 text-xs text-rose-400">{contactErrors.email}</p>}
+                </div>
+                <div className="mb-4">
+                  <textarea
+                    rows="4"
+                    value={contactForm.message}
+                    onChange={(e) => handleContactChange('message', e.target.value)}
+                    className="w-full p-3 bg-transparent border-b border-emerald-400 text-sm outline-none"
+                    placeholder="Your Message"
+                  />
+                  {contactErrors.message && <p className="mt-2 text-xs text-rose-400">{contactErrors.message}</p>}
+                </div>
+                {contactSuccess && <p className="mb-4 text-sm text-emerald-400">{contactSuccess}</p>}
                 <motion.button
+                  type="submit"
                   whileHover={{ scale: 1.035, backgroundColor: 'rgba(255,255,255,0.03)' }}
                   transition={{ duration: 0.25 }}
                   className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-emerald-500 rounded-full shadow btn-primary"
