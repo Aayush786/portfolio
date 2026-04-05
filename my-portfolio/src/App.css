@@ -286,3 +286,82 @@ a.pop-on-hover:hover {
   50% { background-position: 160px 160px, -160px -160px; }
   100% { background-position: 0px 0px, 0px 0px; }
 }
+
+/* Carousel Styling */
+@keyframes slide-left {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+.carousel-slide {
+  animation: slide-left 40s linear infinite;
+}
+
+.carousel-image {
+  transition: transform 0.3s ease, filter 0.3s ease;
+}
+
+.carousel-image:hover {
+  transform: scale(1.08) rotate(2deg);
+  filter: brightness(1.1);
+}
+
+/* Subtle rotation angle for carousel images */
+.carousel-image-small {
+  transform: rotate(-1deg);
+}
+
+.carousel-image-small:nth-child(2n) {
+  transform: rotate(1.5deg);
+}
+
+.carousel-image-small:nth-child(3n) {
+  transform: rotate(-0.8deg);
+}
+
+.carousel-image-small:nth-child(4n) {
+  transform: rotate(2deg);
+}
+
+.carousel-image-small:nth-child(5n) {
+  transform: rotate(-1.2deg);
+}
+
+/* Pulsing glow indicator */
+@keyframes pulse-indicator {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+.carousel-indicator {
+  animation: pulse-indicator 2s ease-in-out infinite;
+}
+
+/* Smooth scrolling for carousel */
+* {
+  scroll-behavior: smooth;
+}
+
+/* Responsive adjustments for carousel */
+@media (max-width: 768px) {
+  .carousel-slide {
+    animation: slide-left 50s linear infinite;
+  }
+}
+
+@media (max-width: 480px) {
+  .carousel-slide {
+    animation: slide-left 60s linear infinite;
+  }
+}
+
