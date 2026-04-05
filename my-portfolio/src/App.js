@@ -550,6 +550,11 @@ export default function App() {
         <>
           {/* HERO */}
           <main className="relative z-10 max-w-7xl mx-auto px-6 py-20 text-center md:text-left pop-on-hover">
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none -z-10">
+              <p className="text-[clamp(3rem,12vw,14rem)] font-extrabold uppercase tracking-[0.35em] text-white/10 select-none opacity-25">
+                AAYUSH
+              </p>
+            </div>
             <motion.section initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1 }}>
               <h1 className="text-5xl md:text-6xl font-extrabold">
                 Hi, I’m <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-emerald-400">Aayush</span>
