@@ -302,33 +302,11 @@ a.pop-on-hover:hover {
 }
 
 .carousel-image {
-  transition: transform 0.3s ease, filter 0.3s ease;
+  transition: filter 0.3s ease;
 }
 
 .carousel-image:hover {
-  transform: scale(1.08) rotate(2deg);
   filter: brightness(1.1);
-}
-
-/* Subtle rotation angle for carousel images */
-.carousel-image-small {
-  transform: rotate(-1deg);
-}
-
-.carousel-image-small:nth-child(2n) {
-  transform: rotate(1.5deg);
-}
-
-.carousel-image-small:nth-child(3n) {
-  transform: rotate(-0.8deg);
-}
-
-.carousel-image-small:nth-child(4n) {
-  transform: rotate(2deg);
-}
-
-.carousel-image-small:nth-child(5n) {
-  transform: rotate(-1.2deg);
 }
 
 /* Pulsing glow indicator */
