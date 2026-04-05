@@ -197,10 +197,63 @@ export default function App() {
   const [theme, setTheme] = useState("dark");
   const [view, setView] = useState('home');
   const [pendingScroll, setPendingScroll] = useState(null);
+  const [shuffledCarouselImages, setShuffledCarouselImages] = useState([]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
   }, [theme]);
+
+  // Shuffle carousel images once on mount
+  useEffect(() => {
+    const carouselImagesBase = [
+      "https://i.postimg.cc/pdg7HX41/hanuman-jayanti.png",
+      "https://i.postimg.cc/8CJp4cL4/update-grant.png",
+      "https://i.postimg.cc/rp0Vjs5Q/holi-homeloan.png",
+      "https://i.postimg.cc/wTppNFWG/estand.png",
+      "https://i.postimg.cc/L4BHNrZH/work-hard.png",
+      "https://i.postimg.cc/g2h87zyq/israel.png",
+      "https://i.postimg.cc/HkTdq3X0/professional-design.png",
+      "https://i.postimg.cc/jjrP0pvX/vacancy.png",
+      "https://i.postimg.cc/0yLR8fwR/Smooth-visa-approved.png",
+      "https://i.postimg.cc/wMWQ9w3z/basanta-panchami.png",
+      "https://i.postimg.cc/CxdSM5rf/sms-ghode.png",
+      "https://i.postimg.cc/nLtBbyTB/hiring.png",
+      "https://i.postimg.cc/RCnSKWv0/insole.png",
+      "https://i.postimg.cc/bJnvyrJg/prajatantra-cosme.png",
+      "https://i.postimg.cc/QdCnKT3D/jap-aus-can.png",
+      "https://i.postimg.cc/BvGH9rNc/aus-can-uk.png",
+      "https://i.postimg.cc/k4KHXPdB/balen-Firefly-Upscaler-2x-scale.png",
+      "https://i.postimg.cc/TPXgMzQc/work-in-israel.png",
+      "https://i.postimg.cc/cLVysmnq/japanese-dream-starts-here.png",
+      "https://i.postimg.cc/RFKYVxzr/ghode-jatra.png",
+      "https://i.postimg.cc/3rCKnPD8/meet-our-dream-achiever.png",
+      "https://i.postimg.cc/HLVDmNxM/comparing.png",
+      "https://i.postimg.cc/1XWryv4R/admission-open.png",
+      "https://i.postimg.cc/2S3rjy9L/1bulk-sms.png",
+      "https://i.postimg.cc/85Z6vjGX/bharosa.png",
+      "https://i.postimg.cc/pXq6dB3h/caring.png",
+      "https://i.postimg.cc/pdg7HX4c/course.png",
+      "https://i.postimg.cc/hGHwBP68/interview.png",
+      "https://i.postimg.cc/xTndQ0SQ/eco-holi.png",
+      "https://i.postimg.cc/v8LQ3p6s/visa-final.png",
+      "https://i.postimg.cc/s2Qjmx5K/valentine-day.png",
+      "https://i.postimg.cc/13yskMw4/flexible.png",
+      "https://i.postimg.cc/D0D4CH8p/comittee.png",
+      "https://i.postimg.cc/28ztmt9S/train-in-nepal.png",
+      "https://i.postimg.cc/qM47rkdd/trip-to-ktm.png",
+      "https://i.postimg.cc/LsY9D5jV/dream-house-with-no-boundry.png",
+      "https://i.postimg.cc/BQMVvCRv/get-skilled-hired.png",
+      "https://i.postimg.cc/ncpLxHtp/ghode-jatra-eco.png",
+      "https://i.postimg.cc/bJnvyrJ3/final-monsooon.png",
+      "https://i.postimg.cc/Nf3rRhhB/edge-on-love-Copy.png",
+      "https://i.postimg.cc/9fRmb0yn/1Homeeloan.png",
+      "https://i.postimg.cc/fyWv4Gzr/cover.png",
+      "https://i.postimg.cc/pXq6dB3h/caring.png",
+      "https://i.postimg.cc/qMkF0FDT/admission-open.png",
+      "https://i.postimg.cc/6pPbrpWx/valentinesd-day.png",
+    ];
+    setShuffledCarouselImages([...carouselImagesBase].sort(() => Math.random() - 0.5));
+  }, []);
 
   // Handle navigation to in-page sections even when currently in Gallery view
   useEffect(() => {
@@ -381,54 +434,7 @@ export default function App() {
     "https://i.postimg.cc/rpx1T94G/valentiesday.png",
   ];
 
-  const carouselImages = [
-    "https://i.postimg.cc/HLVDmNxM/comparing.png",
-    "https://i.postimg.cc/wTppNFWG/estand.png",
-    "https://i.postimg.cc/13yskMw4/flexible.png",
-    "https://i.postimg.cc/RCnSKWv0/insole.png",
-    "https://i.postimg.cc/HkTdq3X0/professional-design.png",
-    "https://i.postimg.cc/k4KHXPdB/balen-Firefly-Upscaler-2x-scale.png",
-    "https://i.postimg.cc/pdg7HX4c/course.png",
-    "https://i.postimg.cc/RFKYVxzr/ghode-jatra.png",
-    "https://i.postimg.cc/pdg7HX41/hanuman-jayanti.png",
-    "https://i.postimg.cc/hGHwBP68/interview.png",
-    "https://i.postimg.cc/qMkF0FDT/admission-open.png",
-    "https://i.postimg.cc/pXq6dB3h/caring.png",
-    "https://i.postimg.cc/BQMVvCRv/get-skilled-hired.png",
-    "https://i.postimg.cc/QdCnKT3D/jap-aus-can.png",
-    "https://i.postimg.cc/28ztmt9S/train-in-nepal.png",
-    "https://i.postimg.cc/6pPbrpWx/valentinesd-day.png",
-    "https://i.postimg.cc/1XWryv4R/admission-open.png",
-    "https://i.postimg.cc/wMWQ9w3z/basanta-panchami.png",
-    "https://i.postimg.cc/fyWv4Gzr/cover.png",
-    "https://i.postimg.cc/BvGH9rNc/aus-can-uk.png",
-    "https://i.postimg.cc/nLtBbyTB/hiring.png",
-    "https://i.postimg.cc/g2h87zyq/israel.png",
-    "https://i.postimg.cc/jjrP0pvX/vacancy.png",
-    "https://i.postimg.cc/TPXgMzQc/work-in-israel.png",
-    "https://i.postimg.cc/85Z6vjGX/bharosa.png",
-    "https://i.postimg.cc/D0D4CH8p/comittee.png",
-    "https://i.postimg.cc/Nf3rRhhB/edge-on-love-Copy.png",
-    "https://i.postimg.cc/1tFzmXtM/delicious-meals.png",
-    "https://i.postimg.cc/bJnvyrJ3/final-monsooon.png",
-    "https://i.postimg.cc/bJnvyrJg/prajatantra-cosme.png",
-    "https://i.postimg.cc/3JYwhKH3/1annapurna-base-camp.png",
-    "https://i.postimg.cc/xTndQ0SQ/eco-holi.png",
-    "https://i.postimg.cc/ncpLxHtp/ghode-jatra-eco.png",
-    "https://i.postimg.cc/qM47rkdd/trip-to-ktm.png",
-    "https://i.postimg.cc/9fRmb0yn/1Homeeloan.png",
-    "https://i.postimg.cc/LsY9D5jV/dream-house-with-no-boundry.png",
-    "https://i.postimg.cc/rp0Vjs5Q/holi-homeloan.png",
-    "https://i.postimg.cc/8CJp4cL4/update-grant.png",
-    "https://i.postimg.cc/s2Qjmx5K/valentine-day.png",
-    "https://i.postimg.cc/3rCKnPD8/meet-our-dream-achiever.png",
-    "https://i.postimg.cc/v8LQ3p6s/visa-final.png",
-    "https://i.postimg.cc/L4BHNrZH/work-hard.png",
-    "https://i.postimg.cc/2S3rjy9L/1bulk-sms.png",
-    "https://i.postimg.cc/CxdSM5rf/sms-ghode.png",
-    "https://i.postimg.cc/cLVysmnq/japanese-dream-starts-here.png",
-    "https://i.postimg.cc/0yLR8fwR/Smooth-visa-approved.png",
-  ];
+  const carouselImages = shuffledCarouselImages;
 
   const education = [
     {
