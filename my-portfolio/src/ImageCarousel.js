@@ -3,11 +3,9 @@ import { motion } from 'framer-motion';
 
 export default function ImageCarousel({ images = [] }) {
   const [isReady, setIsReady] = useState(false);
-  const [previewImage, setPreviewImage] = useState(null);
 
   useEffect(() => {
     if (images.length > 0) {
-      setPreviewImage(images[0]);
       setIsReady(true);
     }
   }, [images]);
@@ -21,21 +19,10 @@ export default function ImageCarousel({ images = [] }) {
   const scrollDistance = images.length * 400;
 
   return (
-    <section className="relative z-10 w-full py-16 overflow-hidden bg-slate-950/95">
+    <section className="relative z-10 w-full py-16 overflow-hidden">
       <div className="max-w-7xl mx-auto px-6 mb-10">
         <h2 className="text-3xl font-bold text-emerald-400">Featured Work</h2>
         <p className="text-gray-400 mt-2">A glimpse of recent design projects and campaigns</p>
-      </div>
-
-      {/* Preview Area */}
-      <div className="max-w-7xl mx-auto px-6 mb-10">
-        <div className="rounded-3xl overflow-hidden border border-gray-800 bg-black/80 shadow-2xl">
-          <img
-            src={previewImage}
-            alt="Hovered work preview"
-            className="w-full object-contain max-h-[420px] bg-slate-950"
-          />
-        </div>
       </div>
 
       {/* Carousel Container */}
@@ -58,8 +45,6 @@ export default function ImageCarousel({ images = [] }) {
             <div
               key={index}
               className="relative flex-shrink-0 w-96 h-full rounded-3xl overflow-hidden bg-slate-900 border border-slate-700 shadow-xl transition-transform duration-300 hover:scale-[1.03] hover:border-emerald-400"
-              onMouseEnter={() => setPreviewImage(src)}
-              onMouseLeave={() => setPreviewImage(images[0])}
             >
               <img
                 src={src}
