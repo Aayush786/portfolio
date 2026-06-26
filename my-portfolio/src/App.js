@@ -10,6 +10,7 @@ import { motion } from "framer-motion";
 import './App.css';
 import Gallery from './Gallery';
 import ImageCarousel from './ImageCarousel';
+import LazyImage from './LazyImage';
 
 // Typing effect hook
 function useTyping(texts, speed = 100, pause = 1500) {
@@ -48,26 +49,27 @@ function Cursor() {
     const el = ref.current;
     if (!el) return;
 
-    function isInteractive(node) {
-      return node && node.closest && node.closest('a,button,input,textarea,select,[role="button"],[data-cursor-hover]');
-    }
-
     function onMove(e) {
       const x = e.clientX;
       const y = e.clientY;
-      // position via left/top so CSS translate(-50%,-50%) keeps it centered
-      el.style.left = x + 'px';
-      el.style.top = y + 'px';
-      const node = document.elementFromPoint(x, y);
-      if (isInteractive(node)) el.classList.add('cursor--hover');
-      else el.classList.remove('cursor--hover');
+      // Position via translate3d for GPU rendering path and centering
+      el.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
+    }
+
+    function onMouseOver(e) {
+      const target = e.target;
+      if (target && target.closest && target.closest('a,button,input,textarea,select,[role="button"],[data-cursor-hover]')) {
+        el.classList.add('cursor--hover');
+      } else {
+        el.classList.remove('cursor--hover');
+      }
     }
 
     document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseenter', onMove);
+    document.addEventListener('mouseover', onMouseOver);
     return () => {
       document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseenter', onMove);
+      document.removeEventListener('mouseover', onMouseOver);
     };
   }, []);
 
@@ -83,6 +85,18 @@ function FloatingField() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     let dpi = window.devicePixelRatio || 1;
+
+    // Create an offscreen canvas to cache the radial gradient bubble
+    const bubbleCanvas = document.createElement('canvas');
+    bubbleCanvas.width = 40;
+    bubbleCanvas.height = 40;
+    const bCtx = bubbleCanvas.getContext('2d');
+    const gradient = bCtx.createRadialGradient(20, 20, 0, 20, 20, 20);
+    gradient.addColorStop(0, 'rgba(16,185,129,1)');
+    gradient.addColorStop(0.5, 'rgba(50,205,150,0.5)');
+    gradient.addColorStop(1, 'rgba(16,24,32,0)');
+    bCtx.fillStyle = gradient;
+    bCtx.fillRect(0, 0, 40, 40);
 
     function resize() {
       const w = Math.max(window.innerWidth, canvas.clientWidth || 0);
@@ -157,16 +171,12 @@ function FloatingField() {
           p.vy += (dy / dist) * force * 0.04;
         }
 
-        // draw glow particle
-        ctx.beginPath();
+        // draw glow particle using cached offscreen canvas (massive speedup)
+        ctx.globalAlpha = Math.max(0.12, p.alpha);
         const radius = Math.max(4, p.size * 4);
-        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, radius);
-        g.addColorStop(0, `rgba(16,185,129,${Math.max(0.12, p.alpha)})`);
-        g.addColorStop(0.5, `rgba(50,205,150,${Math.max(0.06, p.alpha * 0.5)})`);
-        g.addColorStop(1, 'rgba(16,24,32,0)');
-        ctx.fillStyle = g;
-        ctx.fillRect(p.x - radius, p.y - radius, radius * 2, radius * 2);
+        ctx.drawImage(bubbleCanvas, p.x - radius, p.y - radius, radius * 2, radius * 2);
       }
+      ctx.globalAlpha = 1.0;
       raf = requestAnimationFrame(step);
     }
 
@@ -201,6 +211,7 @@ export default function App() {
   const [contactForm, setContactForm] = useState({ name: '', email: '', message: '' });
   const [contactErrors, setContactErrors] = useState({});
   const [contactSuccess, setContactSuccess] = useState('');
+  const [projectCategory, setProjectCategory] = useState('all');
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -255,7 +266,7 @@ export default function App() {
       "https://i.postimg.cc/qMkF0FDT/admission-open.png",
       "https://i.postimg.cc/6pPbrpWx/valentinesd-day.png",
     ];
-    setShuffledCarouselImages([...carouselImagesBase].sort(() => Math.random() - 0.5));
+    setShuffledCarouselImages([...carouselImagesBase].sort(() => Math.random() - 0.5).slice(0, 12));
   }, []);
 
   // Handle navigation to in-page sections even when currently in Gallery view
@@ -404,6 +415,41 @@ export default function App() {
     "https://i.postimg.cc/PfL7wg1M/viswa-karma-puja.png",
   ];
 
+  const webProjects = [
+    {
+      id: 101,
+      title: "Bhansa Nepal",
+      desc: "An authentic cooking and recipe platform featuring traditional Nepali dishes with ingredient metrics and interactive timers.",
+      img: "/bhansanepal.jpg",
+      url: "https://bhansanepal.com/",
+      tags: ["React", "Vite", "TailwindCSS", "Node.js"],
+    },
+    {
+      id: 102,
+      title: "BilNep VAT Billing",
+      desc: "An IRD-compliant tax invoicing software for Nepali businesses to manage invoices and export VAT reports.",
+      img: "/bilnep.jpg",
+      url: "https://billnp.aayushniure.com.np/",
+      tags: ["JavaScript", "CSS3", "Tax Compliance", "IRD API"],
+    },
+    {
+      id: 103,
+      title: "SikshyaKosh Finder",
+      desc: "Nepal's premier scholarship aggregator, indexing national and global scholarship programs for students.",
+      img: "/sikshyakosh.jpg",
+      url: "https://sikshyakosh.vercel.app/",
+      tags: ["HTML5", "CSS3", "JavaScript", "Vercel Hosting"],
+    },
+    {
+      id: 104,
+      title: "Greywood Media",
+      desc: "A sleek digital media agency website featuring pricing tables, services, and dynamic scroll animations.",
+      img: "/greywood.jpg",
+      url: "https://greywood-media.vercel.app/",
+      tags: ["HTML5", "CSS3", "JavaScript", "Vercel Hosting"],
+    },
+  ];
+
   const themeNepalImages = [
     "https://i.postimg.cc/ZnMZVpw5/11111monsooon.png",
     "https://i.postimg.cc/pr6xqzsM/1mojito.png",
@@ -545,11 +591,11 @@ export default function App() {
 
       {/* HERO / Sections (home) or Gallery */}
       {view === 'gallery' ? (
-        <Gallery projects={projects} matesImages={matesImages} themeImages={themeNepalImages} onBack={() => setView('home')} />
+        <Gallery projects={projects} webProjects={webProjects} matesImages={matesImages} themeImages={themeNepalImages} onBack={() => setView('home')} />
       ) : (
         <>
           {/* HERO */}
-          <main className="relative z-10 max-w-7xl mx-auto px-6 py-20 text-center md:text-left pop-on-hover">
+          <main className="relative z-10 max-w-7xl mx-auto px-6 py-20 text-center md:text-left">
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none -z-10">
               <p className="text-[clamp(3rem,12vw,14rem)] font-extrabold uppercase tracking-[0.35em] text-white/10 select-none opacity-25">
                 AAYUSH
@@ -596,7 +642,7 @@ export default function App() {
           <ImageCarousel images={carouselImages} />
 
           {/* ABOUT */}
-          <section id="about" className="relative z-10 max-w-6xl mx-auto px-6 py-16 pop-on-hover">
+          <section id="about" className="relative z-10 max-w-6xl mx-auto px-6 py-16">
             <h2 className="text-3xl font-bold mb-8 text-emerald-400">About Me</h2>
             <div className="grid md:grid-cols-2 gap-10">
               <div className="bg-white/5 p-6 rounded-2xl backdrop-blur-md border border-white/10">
@@ -617,7 +663,7 @@ export default function App() {
           </section>
 
           {/* EDUCATION (Neon Timeline) */}
-          <section id="education" className="relative z-10 max-w-6xl mx-auto px-6 py-20 pop-on-hover">
+          <section id="education" className="relative z-10 max-w-6xl mx-auto px-6 py-20">
             <h2 className="text-3xl font-bold mb-12 text-indigo-400 text-center">Education</h2>
 
             <div className="relative border-l-2 border-indigo-500/30 pl-8 space-y-12">
@@ -647,16 +693,65 @@ export default function App() {
           </section>
 
           {/* WORKS */}
-          <section id="works" className="relative z-10 max-w-7xl mx-auto px-6 py-20 pop-on-hover">
-            <h2 className="text-3xl font-bold text-indigo-400 mb-10">Experience & Projects</h2>
+          <section id="works" className="relative z-10 max-w-7xl mx-auto px-6 py-20">
+            <h2 className="text-3xl font-bold text-indigo-400 mb-6">Experience & Projects</h2>
+            
+            {/* Category tabs */}
+            <div className="flex flex-wrap justify-center md:justify-start gap-4 mb-10 text-sm">
+              <button
+                onClick={() => setProjectCategory('all')}
+                className={`px-4 py-2 rounded-full border transition-all duration-200 ${
+                  projectCategory === 'all'
+                    ? 'bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-500/20 font-medium'
+                    : 'border-white/10 text-gray-400 hover:text-white hover:border-white/20'
+                }`}
+              >
+                All Projects
+              </button>
+              <button
+                onClick={() => setProjectCategory('graphic')}
+                className={`px-4 py-2 rounded-full border transition-all duration-200 ${
+                  projectCategory === 'graphic'
+                    ? 'bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-500/20 font-medium'
+                    : 'border-white/10 text-gray-400 hover:text-white hover:border-white/20'
+                }`}
+              >
+                Graphic Design & Branding
+              </button>
+              <button
+                onClick={() => setProjectCategory('web')}
+                className={`px-4 py-2 rounded-full border transition-all duration-200 ${
+                  projectCategory === 'web'
+                    ? 'bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-500/20 font-medium'
+                    : 'border-white/10 text-gray-400 hover:text-white hover:border-white/20'
+                }`}
+              >
+                Web Development (Vercel)
+              </button>
+            </div>
+
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
-              {projects.map((p) => (
+              {(projectCategory === 'all' ? [...projects, ...webProjects] : (projectCategory === 'graphic' ? projects : webProjects)).map((p) => (
                 <motion.div
                   whileHover={{ scale: 1.05 }}
                   key={p.id}
                   className="relative group bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl overflow-hidden shadow-lg"
                 >
-                  <img src={p.img} alt={p.title} className="h-48 w-full object-cover" />
+                  <LazyImage src={p.img} alt={p.title} className="h-48 w-full" imgClassName="object-cover" />
+
+                  {/* Generic Vercel web project hover action */}
+                  {p.url && (
+                    <div className="absolute top-3 right-3 flex gap-2 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200">
+                      <a
+                        href={p.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1 bg-black/50 text-white rounded-md text-sm backdrop-blur-sm hover:bg-emerald-500/90"
+                      >
+                        Visit Site
+                      </a>
+                    </div>
+                  )}
 
                   {/* Hover actions for Mates International (FB + Web) */}
                   {p.id === 1 && (
@@ -734,7 +829,7 @@ export default function App() {
           </section>
 
           {/* CONTACT */}
-          <section id="contact" className="relative z-10 max-w-6xl mx-auto px-6 py-20 pop-on-hover">
+          <section id="contact" className="relative z-10 max-w-6xl mx-auto px-6 py-20">
             <h2 className="text-3xl font-bold mb-6 text-emerald-400">Let’s Connect</h2>
             <div className="grid md:grid-cols-2 gap-10">
               <form onSubmit={handleContactSubmit} className="bg-white/5 p-6 rounded-2xl backdrop-blur-md border border-white/10">

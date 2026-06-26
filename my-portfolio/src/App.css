@@ -48,12 +48,13 @@
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  transform: translate(-50%, -50%);
+  transform: translate3d(-50%, -50%, 0);
   background: rgba(16,185,129,0.92);
   box-shadow: 0 0 10px rgba(16,185,129,0.8);
   pointer-events: none;
   transition: width .12s ease, height .12s ease, box-shadow .12s ease, opacity .12s ease;
   z-index: 9999;
+  will-change: transform;
 }
 .custom-cursor.cursor--hover {
   width: 28px;
@@ -95,9 +96,9 @@ input, textarea, select { cursor: text; }
   pointer-events: none;
   z-index: 0;
   transform-origin: center center;
-  filter: blur(36px);
-  mix-blend-mode: screen;
+  filter: blur(28px);
   opacity: 0.86;
+  will-change: transform;
 }
 
 .antigrav-bg--a {
@@ -255,7 +256,6 @@ a.pop-on-hover:hover {
   background-size: 64px 64px, 64px 64px;
   opacity: 0.24; /* even lighter grid */
   mix-blend-mode: normal;
-  animation: grid-move 100s linear infinite;
 }
 
 /* Dark theme: softer, light grid lines */

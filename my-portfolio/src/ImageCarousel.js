@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import LazyImage from './LazyImage';
 
 export default function ImageCarousel({ images = [] }) {
   const [isReady, setIsReady] = useState(false);
@@ -46,11 +47,11 @@ export default function ImageCarousel({ images = [] }) {
               key={index}
               className="relative flex-shrink-0 w-96 h-full rounded-3xl overflow-hidden bg-slate-900 border border-slate-700 shadow-xl transition-transform duration-300 hover:scale-[1.03] hover:border-emerald-400"
             >
-              <img
+              <LazyImage
                 src={src}
                 alt={`Work ${(index % images.length) + 1}`}
-                className="w-full h-full object-contain p-3 bg-slate-950"
-                loading="lazy"
+                className="w-full h-full p-3 bg-slate-950"
+                imgClassName="object-contain"
               />
             </div>
           ))}

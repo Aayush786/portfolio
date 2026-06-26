@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import LazyImage from './LazyImage';
 
-export default function Gallery({ projects = [], onBack, matesImages = [], themeImages = [] }) {
+export default function Gallery({ projects = [], webProjects = [], onBack, matesImages = [], themeImages = [] }) {
   const [showThemeAll, setShowThemeAll] = useState(false);
   const [showMatesAll, setShowMatesAll] = useState(false);
   return (
@@ -12,13 +13,49 @@ export default function Gallery({ projects = [], onBack, matesImages = [], theme
         <div />
       </div>
 
+      {webProjects.length > 0 && (
+        <section className="mb-12">
+          <h3 className="text-2xl font-semibold text-emerald-400 mb-4">Web Projects (Vercel)</h3>
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {webProjects.map((p) => (
+              <motion.div
+                key={p.id}
+                whileHover={{ scale: 1.02 }}
+                className="group bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl overflow-hidden shadow-lg"
+              >
+                <LazyImage src={p.img} alt={p.title} className="w-full aspect-[16/9]" imgClassName="object-cover" />
+                <div className="p-4">
+                  <h3 className="text-lg font-semibold text-emerald-400">{p.title}</h3>
+                  <p className="text-sm text-gray-400 mt-2">{p.desc}</p>
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                    {p.tags.map((t) => (
+                      <span key={t} className="px-2 py-1 bg-indigo-500/20 text-indigo-300 rounded-full">{t}</span>
+                    ))}
+                  </div>
+                  <div className="mt-4 flex gap-2">
+                    <a
+                      href={p.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1 bg-black/50 text-white rounded-md text-sm hover:bg-emerald-500/90 transition-colors"
+                    >
+                      Visit Site
+                    </a>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {matesImages.length > 0 && (
         <section className="mb-12">
           <h3 className="text-2xl font-semibold text-emerald-400 mb-4">Mates International — Graphic Design</h3>
           <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {(showMatesAll ? matesImages : matesImages.slice(0, 10)).map((src, i) => (
               <motion.div key={i} whileHover={{ scale: 1.02 }} className="group bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl overflow-hidden shadow-lg">
-                <img src={src} alt={`Mates ${i+1}`} width="1000" height="1000" className="w-full h-auto object-cover" />
+                <LazyImage src={src} alt={`Mates ${i+1}`} className="w-full aspect-square" imgClassName="object-cover" />
               </motion.div>
             ))}
           </div>
@@ -42,7 +79,7 @@ export default function Gallery({ projects = [], onBack, matesImages = [], theme
           <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {(showThemeAll ? themeImages : themeImages.slice(0, 10)).map((src, i) => (
               <motion.div key={i} whileHover={{ scale: 1.02 }} className="group bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl overflow-hidden shadow-lg">
-                <img src={src} alt={`Theme ${i+1}`} width="1000" height="1000" className="w-full h-auto object-cover" />
+                <LazyImage src={src} alt={`Theme ${i+1}`} className="w-full aspect-square" imgClassName="object-cover" />
               </motion.div>
             ))}
           </div>
@@ -67,7 +104,7 @@ export default function Gallery({ projects = [], onBack, matesImages = [], theme
             whileHover={{ scale: 1.03 }}
             className="group bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl overflow-hidden shadow-lg"
           >
-            <img src={p.img} alt={p.title} className="h-44 w-full object-cover" />
+            <LazyImage src={p.img} alt={p.title} className="h-44 w-full" imgClassName="object-cover" />
             <div className="p-4">
               <h3 className="text-lg font-semibold text-emerald-400">{p.title}</h3>
               <p className="text-sm text-gray-400 mt-2">{p.desc}</p>
