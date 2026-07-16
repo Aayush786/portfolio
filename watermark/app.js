@@ -118,7 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.toast.className = `toast show toast-${type}`;
         setTimeout(() => {
             elements.toast.classList.remove('show');
-        }, 3000);
+        }, 4500); // 4.5 seconds so users can read compatibility tips
     }
 
     // Helper: Format bytes
@@ -135,6 +135,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const mins = Math.floor(seconds / 60);
         const secs = Math.floor(seconds % 60);
         return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    }
+
+    // Logo click "Go Home" reset handler
+    const logoLink = document.querySelector('.logo-container');
+    if (logoLink) {
+        logoLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            elements.resetBtn.click(); // Reset state
+        });
     }
 
     // ----------------------------------------------------
@@ -295,7 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // ----------------------------------------------------
-    // ADVANCED TIMELINE PLAYBACK & CONTROLS
+    // TIMELINE PLAYBACK & CONTROLS
     // ----------------------------------------------------
     elements.playPauseBtn.addEventListener('click', togglePlay);
     elements.timelineSlider.addEventListener('input', handleTimelineSliderInput);
@@ -328,7 +337,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.previewVideo.currentTime = time;
         elements.timelineCurrentTime.textContent = formatTime(time);
         elements.timelinePlayheadFill.style.width = (time / state.videoDuration * 100) + '%';
-        renderBoxes(); // Refresh box visibility according to current timeline position
+        renderBoxes(); // Refresh box visibility
     }
 
     function updatePlaybackProgress() {
@@ -342,7 +351,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ----------------------------------------------------
-    // ADVANCED TOOL SWITCHING & SETTINGS
+    // TOOL SWITCHING & SETTINGS
     // ----------------------------------------------------
     elements.toolBox.addEventListener('click', () => setToolMode('box'));
     elements.toolBrush.addEventListener('click', () => setToolMode('brush'));
@@ -378,7 +387,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         elements.brushSizeControl.classList.toggle('hidden', mode === 'box');
         
-        // Update overlay instruction
+        // Update overlay cursor
         if (mode === 'box') {
             elements.interactiveOverlay.style.cursor = 'crosshair';
             elements.brushMaskCanvas.style.pointerEvents = 'none';
@@ -434,7 +443,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ----------------------------------------------------
-    // ADVANCED ALGORITHMS: STATIC HEATMAP SCANNER
+    // STATIC HEATMAP SCANNER
     // ----------------------------------------------------
     async function runVideoTimelineAnalysis() {
         elements.statusTitle.textContent = "Advanced Scrutiny";
@@ -463,7 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.renderPreviewCanvas.width = wScan;
         elements.renderPreviewCanvas.height = hScan;
 
-        // Frames buffer to compute standard deviation
+        // Frames buffer
         const frames = [];
 
         for (let i = 0; i < samplePoints; i++) {
@@ -528,8 +537,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const stdDev = Math.sqrt((sqSumR + sqSumG + sqSumB) / (3 * N));
-            
-            // Map stdDev to visual indicator: Low variance is highlighted (inverse)
             const staticWeight = Math.max(0, 255 - stdDev * 4);
             varData[offset] = Math.round(staticWeight); // Red path
             varData[offset + 1] = 0;
@@ -543,7 +550,6 @@ document.addEventListener('DOMContentLoaded', () => {
         state.averageFrameData = avgCanvas;
         state.varianceFrameData = varCanvas;
         
-        // Generate Thermal glowing overlay
         generateHeatmapOverlay(wScan, hScan);
 
         elements.processingModal.classList.remove('show');
@@ -555,18 +561,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const canvas = elements.heatmapCanvas;
         const ctx = canvas.getContext('2d');
         
-        // We scale the low-resolution variance map to full resolution
         canvas.width = state.originalWidth;
         canvas.height = state.originalHeight;
 
-        // Draw temporary variance map
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = wScan;
         tempCanvas.height = hScan;
         const tempCtx = tempCanvas.getContext('2d');
         tempCtx.drawImage(state.varianceFrameData, 0, 0);
 
-        ctx.filter = "blur(8px)"; // Smooth heatmap glow
+        ctx.filter = "blur(8px)"; 
         ctx.drawImage(tempCanvas, 0, 0, state.originalWidth, state.originalHeight);
         ctx.filter = "none";
     }
@@ -582,7 +586,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast(state.isHeatmapActive ? "Heatmap view active: stationary zones glow purple" : "Heatmap disabled");
     });
 
-    // Detect watermarks using edges combined with static heatmap checks
+    // Detect watermarks
     function detectWatermarks() {
         let srcCanvas = document.createElement('canvas');
         const dWidth = 400;
@@ -609,7 +613,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const thresholds = [52, 35, 18];
         const edgeThreshold = thresholds[state.sensitivity - 1];
 
-        // Variance context check for video
         let varCtx = null;
         if (state.fileType === 'video' && state.varianceFrameData) {
             const varTemp = document.createElement('canvas');
@@ -635,10 +638,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const magnitude = Math.sqrt(valX * valX + valY * valY);
                 let pass = magnitude > edgeThreshold;
 
-                // For videos, we only consider edges that are static (low temporal variance)
                 if (pass && varCtx) {
-                    const varVal = varCtx.getImageData(x, y, 1, 1).data[0]; // Red channel represents static intensity
-                    pass = varVal > 80; // Must be static enough
+                    const varVal = varCtx.getImageData(x, y, 1, 1).data[0]; 
+                    pass = varVal > 80; // must be static
                 }
 
                 edges[y * dWidth + x] = pass ? 255 : 0;
@@ -705,7 +707,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Default BR guide box if empty
         if (state.boxes.length === 0) {
             state.boxes.push({
                 id: 'suggest-br',
@@ -728,13 +729,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ----------------------------------------------------
-    // ADVANCED MOUSE BRUSH & CLONE EVENT HANDLING
+    // MOUSE BRUSH & CLONE EVENT HANDLING
     // ----------------------------------------------------
     elements.brushMaskCanvas.addEventListener('mousedown', handleBrushStart);
     elements.brushMaskCanvas.addEventListener('mousemove', handleBrushMove);
     window.addEventListener('mouseup', handleBrushEnd);
 
-    // Bounding Box dragging events (connected to overlay layer)
     elements.interactiveOverlay.addEventListener('mousedown', handleDrawStart);
     window.addEventListener('mousemove', handleDrawMove);
     window.addEventListener('mouseup', handleDrawEnd);
@@ -744,7 +744,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (state.toolMode !== 'brush') return;
         state.isBrushing = true;
         
-        // Select or create custom brush mask group
         let brushBox = state.boxes.find(b => b.isBrushMask);
         if (!brushBox) {
             brushBox = {
@@ -781,21 +780,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const ctx = canvas.getContext('2d');
         const rect = canvas.getBoundingClientRect();
         
-        // Display space click coords
         const dX = e.clientX - rect.left;
         const dY = e.clientY - rect.top;
 
-        // Original media pixel space coords
         const origX = dX * state.scaleX;
         const origY = dY * state.scaleY;
 
-        // Draw onto visual feedback canvas overlay
-        ctx.fillStyle = '#ec4899'; // Semi-transparent magenta
+        ctx.fillStyle = '#ec4899'; 
         ctx.beginPath();
         ctx.arc(origX, origY, state.brushSize / 2, 0, Math.PI * 2);
         ctx.fill();
 
-        // Update bounding box extents for this custom brush shape
         const brushBox = state.boxes.find(b => b.isBrushMask);
         if (brushBox && brushBox.paintedBounds) {
             const rad = state.brushSize / 2;
@@ -809,7 +804,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (top < brushBox.paintedBounds.minY) brushBox.paintedBounds.minY = Math.round(top);
             if (bottom > brushBox.paintedBounds.maxY) brushBox.paintedBounds.maxY = Math.round(bottom);
 
-            // Synchronize box boundaries with custom bounds
             brushBox.x = brushBox.paintedBounds.minX;
             brushBox.y = brushBox.paintedBounds.minY;
             brushBox.w = brushBox.paintedBounds.maxX - brushBox.paintedBounds.minX;
@@ -817,23 +811,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Refresh overlay canvases (for brush paints)
     function renderBrushMaskCanvas() {
         const canvas = elements.brushMaskCanvas;
         const ctx = canvas.getContext('2d');
-        
-        // Resize will clear context so redraw visual masks if present
         const hasBrush = state.boxes.some(b => b.isBrushMask);
         if (!hasBrush) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
     }
 
-    // BOX AND CLONE DRAGGING & DRAWER
+    // BOX AND CLONE DRAGGING
     function handleDrawStart(e) {
         if (state.activeResizer) return;
 
-        // Check if clicked the Clone stamp Source Node indicator
         const clickedSourceNode = e.target.closest('.clone-source-indicator');
         if (clickedSourceNode) {
             e.stopPropagation();
@@ -848,7 +838,7 @@ document.addEventListener('DOMContentLoaded', () => {
             selectBox(boxId);
 
             const box = state.boxes.find(b => b.id === boxId);
-            if (box.isBrushMask) return; // Freehand masks cannot be dragged directly
+            if (box.isBrushMask) return; 
 
             state.isDraggingBox = true;
             state.draggedBoxId = boxId;
@@ -861,7 +851,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // DRAW NEW BOX (Box/Clone mode)
         if (state.toolMode === 'box' || state.toolMode === 'clone') {
             const rect = elements.interactiveOverlay.getBoundingClientRect();
             state.isDrawing = true;
@@ -890,7 +879,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const rect = elements.interactiveOverlay.getBoundingClientRect();
 
         if (state.isDraggingCloneSource) {
-            // Dragging Clone stamp Source Offset point
             const box = state.boxes.find(b => b.id === state.draggedBoxId);
             if (!box) return;
 
@@ -900,11 +888,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const targetCenterX = (box.x + box.w / 2) / state.scaleX;
             const targetCenterY = (box.y + box.h / 2) / state.scaleY;
 
-            // Calculate relative offset and map back to source scale
             box.cloneOffset.x = Math.round((curXDisplay - targetCenterX) * state.scaleX);
             box.cloneOffset.y = Math.round((curYDisplay - targetCenterY) * state.scaleY);
 
-            // Update details
             elements.cloneOffsetX.textContent = (box.cloneOffset.x >= 0 ? '+' : '') + box.cloneOffset.x + 'px';
             elements.cloneOffsetY.textContent = (box.cloneOffset.y >= 0 ? '+' : '') + box.cloneOffset.y + 'px';
 
@@ -1060,7 +1046,6 @@ document.addEventListener('DOMContentLoaded', () => {
             el.classList.toggle('active', el.dataset.id === id);
         });
         
-        // Update Clone Offset panel if the selected box has clone offset
         const box = state.boxes.find(b => b.id === id);
         if (box) {
             elements.cloneOffsetX.textContent = (box.cloneOffset.x >= 0 ? '+' : '') + box.cloneOffset.x + 'px';
@@ -1104,17 +1089,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentVideoTime = state.fileType === 'video' ? elements.previewVideo.currentTime : 0;
 
         state.boxes.forEach(box => {
-            // Temporal Keyframe evaluation: Check if box is active at current timeline time
             if (state.fileType === 'video') {
                 if (currentVideoTime < box.startTime || currentVideoTime > box.endTime) {
-                    return; // Skip rendering on overlay
+                    return; 
                 }
             }
 
-            if (box.isBrushMask) {
-                // Freehand painted shapes are already drawn on the canvas layer, bypass overlay
-                return;
-            }
+            if (box.isBrushMask) return;
 
             const el = document.createElement('div');
             el.className = `bounding-box ${state.activeBoxId === box.id ? 'active' : ''}`;
@@ -1174,7 +1155,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             elements.interactiveOverlay.appendChild(el);
 
-            // Draw Smart Clone Stamp Source Pointer node
             if (isClone) {
                 const sX = bX + (bW / 2) + (box.cloneOffset.x / state.scaleX);
                 const sY = bY + (bH / 2) + (box.cloneOffset.y / state.scaleY);
@@ -1225,7 +1205,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const isVideo = state.fileType === 'video';
 
-            // Construct ranges
             let timelineRangeHtml = '';
             if (isVideo) {
                 timelineRangeHtml = `
@@ -1258,7 +1237,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 </button>
             `;
 
-            // Active timeline ranges inputs slider listeners
             if (isVideo) {
                 setTimeout(() => {
                     const startSld = document.getElementById(`start-time-${box.id}`);
@@ -1297,7 +1275,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (e.target.closest('.detection-checkbox') || e.target.classList.contains('detection-checkbox')) {
                     toggleBoxSelection(box.id);
                 } else if (e.target.closest('.item-range-container')) {
-                    // Let sliders handle clicks
+                    // range clicks
                 } else {
                     selectBox(box.id);
                 }
@@ -1323,20 +1301,27 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // onion peeling background diffusion restoration algorithm
+    // Fixed Onion Diffusion: No coordinate shifting
     function runOnionDiffusion(ctx, box) {
         const margin = 10;
-        const xVal = Math.max(margin, box.x);
-        const yVal = Math.max(margin, box.y);
-        const wVal = Math.min(state.originalWidth - xVal - margin, box.w);
-        const hVal = Math.min(state.originalHeight - yVal - margin, box.h);
+        
+        const x1 = box.x;
+        const y1 = box.y;
+        const x2 = box.x + box.w;
+        const y2 = box.y + box.h;
 
-        if (wVal <= 0 || hVal <= 0) return;
+        // Expanded boundaries clamped to canvas bounds
+        const ex1 = Math.max(0, x1 - margin);
+        const ey1 = Math.max(0, y1 - margin);
+        const ex2 = Math.min(state.originalWidth, x2 + margin);
+        const ey2 = Math.min(state.originalHeight, y2 + margin);
 
-        const srcX = xVal - margin;
-        const srcY = yVal - margin;
-        const srcW = wVal + 2 * margin;
-        const srcH = hVal + 2 * margin;
+        const srcX = ex1;
+        const srcY = ey1;
+        const srcW = ex2 - ex1;
+        const srcH = ey2 - ey1;
+
+        if (srcW <= 0 || srcH <= 0) return;
 
         const imgData = ctx.getImageData(srcX, srcY, srcW, srcH);
         const pixels = imgData.data;
@@ -1345,7 +1330,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const mask = new Uint8Array(srcW * srcH);
 
         if (box.isBrushMask) {
-            // Retrieve custom painted mask strokes from mask canvas
+            // Retrieve custom painted mask strokes
             const maskTempCanvas = document.createElement('canvas');
             maskTempCanvas.width = state.originalWidth;
             maskTempCanvas.height = state.originalHeight;
@@ -1356,36 +1341,44 @@ document.addEventListener('DOMContentLoaded', () => {
             for (let y = 0; y < srcH; y++) {
                 for (let x = 0; x < srcW; x++) {
                     const idx = y * srcW + x;
-                    // Non-zero alpha or red represents mask paint
                     mask[idx] = (brushMaskData[idx * 4 + 3] > 80 || brushMaskData[idx * 4] > 80) ? 1 : 0;
                 }
             }
         } else {
-            // Bounding box fill mask
-            for (let y = margin; y < margin + hVal; y++) {
-                for (let x = margin; x < margin + wVal; x++) {
-                    mask[y * srcW + x] = 1;
+            // Bounding box fill mask: relative to expanded (ex1, ey1)
+            const maskLeft = x1 - ex1;
+            const maskTop = y1 - ey1;
+            const maskRight = x2 - ex1;
+            const maskBottom = y2 - ey1;
+
+            for (let y = maskTop; y < maskBottom; y++) {
+                for (let x = maskLeft; x < maskRight; x++) {
+                    if (x >= 0 && x < srcW && y >= 0 && y < srcH) {
+                        mask[y * srcW + x] = 1;
+                    }
                 }
             }
         }
 
         // Initialize outer boundary coordinates queue
         let queue = [];
-        for (let y = 1; y < srcH - 1; y++) {
-            for (let x = 1; x < srcW - 1; x++) {
+        for (let y = 0; y < srcH; y++) {
+            for (let x = 0; x < srcW; x++) {
                 const idx = y * srcW + x;
-                if (mask[idx] === 1 && (
-                    mask[idx - 1] === 0 || 
-                    mask[idx + 1] === 0 || 
-                    mask[idx - srcW] === 0 || 
-                    mask[idx + srcW] === 0
-                )) {
-                    queue.push(idx);
+                if (mask[idx] === 1) {
+                    const isLeftBg = x === 0 || mask[idx - 1] === 0;
+                    const isRightBg = x === srcW - 1 || mask[idx + 1] === 0;
+                    const isTopBg = y === 0 || mask[idx - srcW] === 0;
+                    const isBottomBg = y === srcH - 1 || mask[idx + srcW] === 0;
+
+                    if (isLeftBg || isRightBg || isTopBg || isBottomBg) {
+                        queue.push(idx);
+                    }
                 }
             }
         }
 
-        // Propagate colors inwards
+        // Propagate background colors inwards
         while (queue.length > 0) {
             const nextQueue = [];
             for (let i = 0; i < queue.length; i++) {
@@ -1393,10 +1386,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (mask[idx] === 0) continue;
 
                 let rSum = 0, gSum = 0, bSum = 0, count = 0;
-                const neighbors = [idx - 1, idx + 1, idx - srcW, idx + srcW];
                 
-                neighbors.forEach(n => {
-                    if (n >= 0 && n < mask.length && mask[n] === 0) {
+                const y = Math.floor(idx / srcW);
+                const x = idx % srcW;
+
+                const dirs = [];
+                if (x > 0) dirs.push(idx - 1);
+                if (x < srcW - 1) dirs.push(idx + 1);
+                if (y > 0) dirs.push(idx - srcW);
+                if (y < srcH - 1) dirs.push(idx + srcW);
+
+                dirs.forEach(n => {
+                    if (mask[n] === 0) {
                         const offset = n * 4;
                         rSum += pixels[offset];
                         gSum += pixels[offset + 1];
@@ -1412,8 +1413,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     pixels[offset + 2] = Math.round(bSum / count);
                     mask[idx] = 0; // Solved
 
-                    neighbors.forEach(n => {
-                        if (n >= 0 && n < mask.length && mask[n] === 1) {
+                    dirs.forEach(n => {
+                        if (mask[n] === 1) {
                             nextQueue.push(n);
                         }
                     });
@@ -1423,19 +1424,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Blending edge seams
-        if (state.feather > 0) {
-            for (let y = margin - 2; y < margin + hVal + 2; y++) {
-                for (let x = margin - 2; x < margin + wVal + 2; x++) {
-                    const isXBound = Math.abs(x - margin) <= 2 || Math.abs(x - (margin + wVal)) <= 2;
-                    const isYBound = Math.abs(y - margin) <= 2 || Math.abs(y - (margin + hVal)) <= 2;
-                    
-                    if (isXBound || isYBound) {
+        if (state.feather > 0 && !box.isBrushMask) {
+            const maskLeft = x1 - ex1;
+            const maskTop = y1 - ey1;
+            const maskRight = x2 - ex1;
+            const maskBottom = y2 - ey1;
+
+            for (let y = 0; y < srcH; y++) {
+                for (let x = 0; x < srcW; x++) {
+                    const distToLeft = Math.abs(x - maskLeft);
+                    const distToRight = Math.abs(x - maskRight);
+                    const distToTop = Math.abs(y - maskTop);
+                    const distToBottom = Math.abs(y - maskBottom);
+
+                    const isNearX = distToLeft <= 2 || distToRight <= 2;
+                    const isNearY = distToTop <= 2 || distToBottom <= 2;
+
+                    if (isNearX || isNearY) {
                         const center = (y * srcW + x) * 4;
                         let r = 0, g = 0, b = 0, cCount = 0;
                         for (let dy = -1; dy <= 1; dy++) {
                             for (let dx = -1; dx <= 1; dx++) {
-                                const sample = ((y + dy) * srcW + (x + dx)) * 4;
-                                if (sample >= 0 && sample < pixels.length) {
+                                const ny = y + dy;
+                                const nx = x + dx;
+                                if (nx >= 0 && nx < srcW && ny >= 0 && ny < srcH) {
+                                    const sample = (ny * srcW + nx) * 4;
                                     r += pixels[sample];
                                     g += pixels[sample + 1];
                                     b += pixels[sample + 2];
@@ -1454,7 +1467,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.putImageData(imgData, srcX, srcY);
     }
 
-    // Smart Clone Stamp replicator
+    // Smart Clone Stamp: Clones from current frame buffer (avoids self-feedback artifacts)
     function runSmartClone(ctx, box) {
         const xVal = Math.max(0, box.x);
         const yVal = Math.max(0, box.y);
@@ -1463,46 +1476,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (wVal <= 0 || hVal <= 0) return;
 
-        // Clone source coords
         const dx = box.cloneOffset.x;
         const dy = box.cloneOffset.y;
 
-        // Fetch original texture source (uncorrupted background pixels)
-        const cleanCtx = document.createElement('canvas').getContext('2d');
         const canvasWidth = state.originalWidth;
         const canvasHeight = state.originalHeight;
-        cleanCtx.canvas.width = canvasWidth;
-        cleanCtx.canvas.height = canvasHeight;
 
-        if (state.fileType === 'image') {
-            cleanCtx.drawImage(elements.previewImage, 0, 0);
-        } else {
-            // Draw average clean static frames if available
-            if (state.averageFrameData) {
-                cleanCtx.drawImage(state.averageFrameData, 0, 0, canvasWidth, canvasHeight);
-            } else {
-                cleanCtx.drawImage(elements.previewVideo, 0, 0, canvasWidth, canvasHeight);
-            }
-        }
-
-        const cleanImgData = cleanCtx.getImageData(0, 0, canvasWidth, canvasHeight);
-        const cleanPixels = cleanImgData.data;
-
-        // Fetch current canvas frame context where edits are actively made
+        // Fetch current canvas frame context
         const currentImgData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
         const currentPixels = currentImgData.data;
+
+        // Duplicate pixel buffer to read uncorrupted textures
+        const tempPixels = new Uint8ClampedArray(currentPixels);
 
         // Clone target mask
         for (let y = yVal; y < yVal + hVal; y++) {
             for (let x = xVal; x < xVal + wVal; x++) {
-                // Cloned source pixel coords
                 const srcX = Math.max(0, Math.min(canvasWidth - 1, x + dx));
                 const srcY = Math.max(0, Math.min(canvasHeight - 1, y + dy));
 
                 const targetOffset = (y * canvasWidth + x) * 4;
                 const sourceOffset = (srcY * canvasWidth + srcX) * 4;
 
-                // Simple feathering boundary blend inside the box margins
                 const marginX = Math.min(x - xVal, (xVal + wVal) - x);
                 const marginY = Math.min(y - yVal, (yVal + hVal) - y);
                 const borderDist = Math.min(marginX, marginY);
@@ -1513,9 +1508,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     blendWeight = borderDist / featherWidth;
                 }
 
-                currentPixels[targetOffset] = Math.round(cleanPixels[sourceOffset] * blendWeight + currentPixels[targetOffset] * (1 - blendWeight));
-                currentPixels[targetOffset + 1] = Math.round(cleanPixels[sourceOffset + 1] * blendWeight + currentPixels[targetOffset + 1] * (1 - blendWeight));
-                currentPixels[targetOffset + 2] = Math.round(cleanPixels[sourceOffset + 2] * blendWeight + currentPixels[targetOffset + 2] * (1 - blendWeight));
+                currentPixels[targetOffset] = Math.round(tempPixels[sourceOffset] * blendWeight + currentPixels[targetOffset] * (1 - blendWeight));
+                currentPixels[targetOffset + 1] = Math.round(tempPixels[sourceOffset + 1] * blendWeight + currentPixels[targetOffset + 1] * (1 - blendWeight));
+                currentPixels[targetOffset + 2] = Math.round(tempPixels[sourceOffset + 2] * blendWeight + currentPixels[targetOffset + 2] * (1 - blendWeight));
             }
         }
 
@@ -1523,17 +1518,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ----------------------------------------------------
-    // RENDER PROCESSING AND SAVE EXPORTS
+    // PROCESS AND EXPORTS
     // ----------------------------------------------------
-    elements.processBtn.addEventListener('click', () => {
-        if (state.fileType === 'image') {
-            processImage();
-        } else if (state.fileType === 'video') {
-            processVideo();
-        }
-    });
-
-    // Image removal export
+    // Photo Export
     function processImage() {
         elements.statusTitle.textContent = "Processing Image";
         elements.statusDesc.textContent = "Removing watermarks, signatures, and stamps...";
@@ -1588,7 +1575,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 400);
     }
 
-    // Video frame rendering timeline export
+    // Video Export (Fixed playability)
     async function processVideo() {
         state.processing = true;
         elements.statusTitle.textContent = "Processing Video";
@@ -1598,7 +1585,6 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.renderPreviewWrapper.style.display = "block";
         elements.processingModal.classList.add('show');
 
-        // Render playback source setup
         const renderVideo = document.createElement('video');
         renderVideo.src = state.objectUrl;
         renderVideo.muted = true;
@@ -1614,14 +1600,12 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.renderPreviewCanvas.width = 320;
         elements.renderPreviewCanvas.height = Math.round(320 * (state.originalHeight / state.originalWidth));
 
-        // Audio stream tracking
+        // Audio stream tracking: extract from render video during playback
         let audioTrack = null;
         try {
-            const srcStream = elements.previewVideo.captureStream ? 
-                              elements.previewVideo.captureStream() : 
-                              elements.previewVideo.mozCaptureStream();
-            if (srcStream && srcStream.getAudioTracks().length > 0) {
-                audioTrack = srcStream.getAudioTracks()[0].clone();
+            const renderStream = renderVideo.captureStream ? renderVideo.captureStream() : renderVideo.mozCaptureStream();
+            if (renderStream && renderStream.getAudioTracks().length > 0) {
+                audioTrack = renderStream.getAudioTracks()[0].clone();
             }
         } catch (e) {
             console.warn("Muted or non-existent audio track: ", e);
@@ -1634,9 +1618,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         state.recordedChunks = [];
-        let options = { mimeType: 'video/webm;codecs=vp9,opus' };
+        
+        // Optimizing codec selection for maximum playability (Priority H.264/AAC > VP9 > VP8)
+        let options = { mimeType: 'video/webm;codecs=h264,opus' };
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/webm;codecs=h264' };
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/mp4;codecs=h264,aac' };
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/mp4;codecs=h264' };
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/webm;codecs=vp9,opus' };
         if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/webm;codecs=vp8,opus' };
-        if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/mp4' };
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/webm' };
         if (!MediaRecorder.isTypeSupported(options.mimeType)) options = {};
 
         try {
@@ -1734,7 +1724,13 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        showToast("File saved to downloads directory!");
+
+        // Tell user how to play WebM files if it downloads as WebM
+        if (ext === 'webm') {
+            showToast("File downloaded! Tip: Open WebM files in Google Chrome or VLC Media Player.", "success");
+        } else {
+            showToast("File saved to downloads directory!");
+        }
     });
 
     // Comparison slider logic
