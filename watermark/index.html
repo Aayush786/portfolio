@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EraserFlow AI - Video & Photo Watermark Remover</title>
+    <meta name="description" content="Instantly detect and remove logos, text, stamps, and watermarks from your videos and photos using smart client-side AI algorithms.">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <a href="#" class="logo-container">
+            <div class="logo-icon">EF</div>
+            <span class="logo-text">EraserFlow <span style="font-weight: 300;">AI</span></span>
+            <span class="tagline">Watermark & Logo Remover</span>
+        </a>
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <span class="app-badge">v2.0 Client-Side</span>
+        </div>
+    </header>
+
+    <main>
+        <!-- UPLOAD SECTION -->
+        <section id="upload-view" class="upload-container">
+            <input type="file" id="file-input" class="hidden" accept="image/*,video/*">
+            <div class="upload-icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </div>
+            <h2 class="upload-title">Upload your photo or video</h2>
+            <p class="upload-subtitle">Drag and drop your file here, or click to browse. Works with MP4, WebM, MOV, JPG, PNG, WebP.</p>
+            <button class="browse-btn" id="browse-btn">Browse Files</button>
+            <div class="formats-info">
+                <span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    Images up to 50MB
+                </span>
+                <span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                    Videos up to 200MB
+                </span>
+                <span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    100% Private (No Uploads)
+                </span>
+            </div>
+        </section>
+
+        <!-- WORKSPACE SECTION -->
+        <section id="editor-view" class="workspace-layout hidden">
+            <!-- Left Side: Interactive Canvas / Viewer -->
+            <div class="editor-panel">
+                <div class="panel-header">
+                    <span class="panel-title" id="media-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+                        Media Editor
+                    </span>
+                    <span style="font-size: 0.85rem; color: var(--text-muted);" id="editor-instruction">
+                        Click & drag on the media to select additional logos
+                    </span>
+                </div>
+                
+                <div class="editor-viewport" id="viewport">
+                    <!-- Image/Video container with bounding boxes overlay -->
+                    <div class="media-container id-media-wrapper" id="media-wrapper">
+                        <img id="preview-image" class="hidden" alt="Source photo">
+                        <video id="preview-video" class="hidden" controls playsinline></video>
+                        <div id="interactive-overlay" class="interactive-overlay"></div>
+                    </div>
+
+                    <!-- Comparison slider (Visible only after photo processing) -->
+                    <div id="comparison-view" class="comparison-container hidden">
+                        <div class="comparison-wrapper" id="comparison-wrapper">
+                            <span class="comp-label comp-label-before">Before</span>
+                            <span class="comp-label comp-label-after">After</span>
+                            <!-- Clean photo is the bottom layer -->
+                            <img id="clean-image-bg" class="comp-img" alt="Clean image">
+                            <!-- Original photo is the top layer, clipped by width -->
+                            <img id="original-image-fg" class="comp-img-before" alt="Original image">
+                            
+                            <div class="comp-divider" id="comp-divider"></div>
+                            <div class="comp-handle" id="comp-handle">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                            </div>
+                            <input type="range" min="0" max="100" value="50" class="comp-slider" id="comp-slider">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side: Sidebar Controls -->
+            <div class="control-panel">
+                <!-- Metadata Card -->
+                <div class="card" id="meta-card">
+                    <h3 class="card-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        File Information
+                    </h3>
+                    <div class="file-meta">
+                        <div class="meta-row">
+                            <span class="meta-label">Filename</span>
+                            <span class="meta-value" id="meta-name">-</span>
+                        </div>
+                        <div class="meta-row">
+                            <span class="meta-label">Format</span>
+                            <span class="meta-value" id="meta-type">-</span>
+                        </div>
+                        <div class="meta-row">
+                            <span class="meta-label">Resolution</span>
+                            <span class="meta-value" id="meta-resolution">-</span>
+                        </div>
+                        <div class="meta-row">
+                            <span class="meta-label">File Size</span>
+                            <span class="meta-value" id="meta-size">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Watermark Candidates Card -->
+                <div class="card" id="detections-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3 class="card-title" style="margin-bottom: 0;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
+                            Watermark Regions
+                        </h3>
+                        <button id="clear-masks-btn" class="danger-btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; display: none;">Clear All</button>
+                    </div>
+                    <div class="detections-list" id="detections-list">
+                        <div class="detections-placeholder">
+                            Analyzing media for static watermarks...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Inpainting Parameters Card -->
+                <div class="card" id="settings-card">
+                    <h3 class="card-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        Removal Adjustments
+                    </h3>
+                    <div class="slider-group">
+                        <div class="slider-label-row">
+                            <span class="slider-name">Edge Feathering</span>
+                            <span class="slider-val" id="feather-val">5px</span>
+                        </div>
+                        <input type="range" min="0" max="25" value="5" class="custom-range" id="feather-slider">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-label-row">
+                            <span class="slider-name">Detection Sensitivity</span>
+                            <span class="slider-val" id="sensitivity-val">High</span>
+                        </div>
+                        <input type="range" min="1" max="3" value="2" class="custom-range" id="sensitivity-slider">
+                    </div>
+                </div>
+
+                <!-- Actions Card -->
+                <div class="card" id="actions-card">
+                    <div class="btn-container">
+                        <button id="process-btn" class="primary-btn" disabled>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                            Remove Logo / Watermarks
+                        </button>
+                        
+                        <button id="download-btn" class="primary-btn hidden" style="background: linear-gradient(135deg, var(--success), #059669); box-shadow: 0 4px 20px var(--success-glow);">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Download Fully Restored Media
+                        </button>
+                        
+                        <button id="reset-btn" class="secondary-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><polyline points="3 3 3 8 8 8"/></svg>
+                            Upload Another File
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- PROCESSING OVERLAY MODAL -->
+    <div class="overlay-modal" id="processing-modal">
+        <div class="modal-content">
+            <div class="loader-spinner">
+                <div class="spinner-outer"></div>
+                <div class="spinner-inner"></div>
+                <div class="spinner-center-val" id="progress-percent">0%</div>
+            </div>
+            
+            <h3 class="status-title" id="status-title">Analyzing Frames</h3>
+            <p class="status-desc" id="status-desc">Scanning the video file structure to localize static elements...</p>
+            
+            <div class="render-preview-wrapper" id="render-preview-wrapper">
+                <div class="render-scan-line"></div>
+                <canvas class="render-preview-canvas" id="render-preview-canvas"></canvas>
+            </div>
+            
+            <div class="progress-track">
+                <div class="progress-fill" id="progress-bar-fill"></div>
+            </div>
+            
+            <button id="cancel-process-btn" class="danger-btn">Cancel Processing</button>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div class="toast" id="toast">
+        <div class="toast-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <span class="toast-message" id="toast-msg">Success Message here</span>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 EraserFlow AI. Engineered completely client-side for absolute privacy. No media files are ever transmitted to a server.</p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
