@@ -1,4 +1,4 @@
-// EraserFlow AI - Application Engine
+// EraserFlow AI - Advanced Application Engine
 document.addEventListener('DOMContentLoaded', () => {
     // State management
     const state = {
@@ -9,21 +9,42 @@ document.addEventListener('DOMContentLoaded', () => {
         originalHeight: 0,
         scaleX: 1,
         scaleY: 1,
-        boxes: [], // Bounding boxes: { id, x, y, w, h, label, selected }
+        
+        // Active selections
+        boxes: [], // Elements: { id, x, y, w, h, label, selected, startTime, endTime, isBrushMask, points, cloneOffset }
         activeBoxId: null,
+        
+        // Tool configurations
+        toolMode: 'box', // 'box', 'brush', 'clone'
+        brushSize: 25,
+        isBrushing: false,
+        removalMode: 'diffusion', // 'diffusion', 'clone'
+        
+        // Drawing & interaction
         isDrawing: false,
         drawStart: { x: 0, y: 0 },
+        isDraggingBox: false,
+        draggedBoxId: null,
+        activeResizer: null,
+        resizeOffset: { x: 0, y: 0 },
+        isDraggingCloneSource: false,
+        
+        // Settings
         feather: 5,
         sensitivity: 2,
-        processing: false,
+        
+        // Video specific
         videoDuration: 0,
-        audioTracks: [],
-        mediaStream: null,
-        mediaRecorder: null,
+        averageFrameData: null, // Average frame canvas
+        varianceFrameData: null, // Standard deviation variance canvas
+        isHeatmapActive: false,
+        isPlaying: false,
+        
+        // Exporting
+        processing: false,
         recordedChunks: [],
-        averageFrameData: null, // Cache for averaged video frames
-        activeResizer: null,
-        resizeOffset: { x: 0, y: 0 }
+        mediaRecorder: null,
+        restoredBlob: null
     };
 
     // DOM Elements
@@ -64,7 +85,31 @@ document.addEventListener('DOMContentLoaded', () => {
         renderPreviewWrapper: document.getElementById('render-preview-wrapper'),
         cancelProcessBtn: document.getElementById('cancel-process-btn'),
         toast: document.getElementById('toast'),
-        toastMsg: document.getElementById('toast-msg')
+        toastMsg: document.getElementById('toast-msg'),
+
+        // New Advanced Elements
+        toolBox: document.getElementById('tool-box'),
+        toolBrush: document.getElementById('tool-brush'),
+        toolClone: document.getElementById('tool-clone'),
+        brushSizeControl: document.getElementById('brush-size-control'),
+        brushSizeSlider: document.getElementById('brush-size-slider'),
+        brushSizeVal: document.getElementById('brush-size-val'),
+        heatmapToggleBtn: document.getElementById('heatmap-toggle-btn'),
+        brushMaskCanvas: document.getElementById('brush-mask-canvas'),
+        heatmapCanvas: document.getElementById('heatmap-canvas'),
+        videoTimelineContainer: document.getElementById('video-timeline-container'),
+        playPauseBtn: document.getElementById('play-pause-btn'),
+        playIcon: document.getElementById('play-icon'),
+        pauseIcon: document.getElementById('pause-icon'),
+        timelineCurrentTime: document.getElementById('timeline-current-time'),
+        timelineSlider: document.getElementById('timeline-slider'),
+        timelinePlayheadFill: document.getElementById('timeline-playhead-fill'),
+        timelineDuration: document.getElementById('timeline-duration'),
+        modeDiffusion: document.getElementById('mode-diffusion'),
+        modeClone: document.getElementById('mode-clone'),
+        cloneStampSettings: document.getElementById('clone-stamp-settings'),
+        cloneOffsetX: document.getElementById('clone-offset-x'),
+        cloneOffsetY: document.getElementById('clone-offset-y')
     };
 
     // Helper: Show Toast Notification
@@ -73,7 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.toast.className = `toast show toast-${type}`;
         setTimeout(() => {
             elements.toast.classList.remove('show');
-        }, 3500);
+        }, 3000);
     }
 
     // Helper: Format bytes
@@ -85,20 +130,25 @@ document.addEventListener('DOMContentLoaded', () => {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 
-    // File selection event handlers
+    // Helper: Format timeline time
+    function formatTime(seconds) {
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    }
+
+    // ----------------------------------------------------
+    // INITIALIZATION & UPLOAD ACTIONS
+    // ----------------------------------------------------
     elements.browseBtn.addEventListener('click', () => elements.fileInput.click());
     elements.fileInput.addEventListener('change', handleFileSelect);
 
-    // Drag and drop events
+    // Drag and Drop
     elements.uploadView.addEventListener('dragover', (e) => {
         e.preventDefault();
         elements.uploadView.classList.add('dragover');
     });
-
-    elements.uploadView.addEventListener('dragleave', () => {
-        elements.uploadView.classList.remove('dragover');
-    });
-
+    elements.uploadView.addEventListener('dragleave', () => elements.uploadView.classList.remove('dragover'));
     elements.uploadView.addEventListener('drop', (e) => {
         e.preventDefault();
         elements.uploadView.classList.remove('dragover');
@@ -108,28 +158,32 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Reset application state
+    // Reset All States
     elements.resetBtn.addEventListener('click', () => {
-        if (state.objectUrl) {
-            URL.revokeObjectURL(state.objectUrl);
-        }
+        if (state.objectUrl) URL.revokeObjectURL(state.objectUrl);
         state.file = null;
         state.fileType = null;
         state.objectUrl = null;
         state.boxes = [];
         state.activeBoxId = null;
         state.averageFrameData = null;
+        state.varianceFrameData = null;
         state.recordedChunks = [];
-        
+        state.isPlaying = false;
+        state.isHeatmapActive = false;
+
         elements.previewImage.src = '';
         elements.previewVideo.src = '';
         elements.cleanImageBg.src = '';
         elements.originalImageFg.src = '';
-        
+
         elements.previewImage.classList.add('hidden');
         elements.previewVideo.classList.add('hidden');
-        elements.mediaWrapper.classList.remove('hidden');
+        elements.brushMaskCanvas.classList.add('hidden');
+        elements.heatmapCanvas.classList.add('hidden');
+        elements.videoTimelineContainer.classList.add('hidden');
         elements.comparisonView.classList.add('hidden');
+        elements.mediaWrapper.classList.remove('hidden');
         elements.downloadBtn.classList.add('hidden');
         elements.processBtn.classList.remove('hidden');
         elements.processBtn.disabled = true;
@@ -137,37 +191,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
         elements.editorView.classList.add('hidden');
         elements.uploadView.classList.remove('hidden');
+
+        // Clear dynamic elements
+        const brushCtx = elements.brushMaskCanvas.getContext('2d');
+        brushCtx.clearRect(0, 0, elements.brushMaskCanvas.width, elements.brushMaskCanvas.height);
         
-        // Clear list
-        elements.detectionsList.innerHTML = `<div class="detections-placeholder">Analyzing media for static watermarks...</div>`;
+        elements.detectionsList.innerHTML = `<div class="detections-placeholder">Analyzing media...</div>`;
+        setToolMode('box');
     });
 
-    // Adjustments Handlers
-    elements.featherSlider.addEventListener('input', (e) => {
-        state.feather = parseInt(e.target.value);
-        elements.featherVal.textContent = state.feather + 'px';
-    });
-
-    elements.sensitivitySlider.addEventListener('input', (e) => {
-        const val = parseInt(e.target.value);
-        state.sensitivity = val;
-        const labels = ['Low', 'Medium', 'High'];
-        elements.sensitivityVal.textContent = labels[val - 1];
-        
-        // Re-run watermark detection with new sensitivity
-        if (state.fileType) {
-            detectWatermarks();
-        }
-    });
-
-    // Main file loader
+    // File Selector handler
     function handleFileSelect() {
         const file = elements.fileInput.files[0];
         if (!file) return;
 
         state.file = file;
         state.objectUrl = URL.createObjectURL(file);
-        
+
         elements.metaName.textContent = file.name;
         elements.metaType.textContent = file.type || 'Unknown';
         elements.metaSize.textContent = formatBytes(file.size);
@@ -180,11 +220,17 @@ document.addEventListener('DOMContentLoaded', () => {
             elements.previewImage.src = state.objectUrl;
             elements.previewImage.classList.remove('hidden');
             elements.previewVideo.classList.add('hidden');
+            elements.videoTimelineContainer.classList.add('hidden');
             
             elements.previewImage.onload = () => {
                 state.originalWidth = elements.previewImage.naturalWidth;
                 state.originalHeight = elements.previewImage.naturalHeight;
                 elements.metaResolution.textContent = `${state.originalWidth} × ${state.originalHeight}`;
+                
+                // Set sizes of overlays
+                elements.brushMaskCanvas.width = state.originalWidth;
+                elements.brushMaskCanvas.height = state.originalHeight;
+                
                 recalculateScaling();
                 detectWatermarks();
             };
@@ -193,33 +239,34 @@ document.addEventListener('DOMContentLoaded', () => {
             elements.previewVideo.src = state.objectUrl;
             elements.previewVideo.classList.remove('hidden');
             elements.previewImage.classList.add('hidden');
-            elements.previewVideo.muted = true; // Mute video so processing isn't loud
-            
+            elements.videoTimelineContainer.classList.remove('hidden');
+            elements.previewVideo.muted = true;
+            elements.previewVideo.loop = true;
+
             elements.previewVideo.onloadedmetadata = () => {
                 state.originalWidth = elements.previewVideo.videoWidth;
                 state.originalHeight = elements.previewVideo.videoHeight;
                 state.videoDuration = elements.previewVideo.duration;
                 elements.metaResolution.textContent = `${state.originalWidth} × ${state.originalHeight}`;
+                elements.timelineDuration.textContent = formatTime(state.videoDuration);
+                elements.timelineSlider.max = Math.floor(state.videoDuration * 100);
+
+                elements.brushMaskCanvas.width = state.originalWidth;
+                elements.brushMaskCanvas.height = state.originalHeight;
+
                 recalculateScaling();
-                
-                // For videos, run frame-averaging timeline scanning first
                 runVideoTimelineAnalysis();
             };
-        } else {
-            showToast('Unsupported file format. Please upload an image or video.', 'error');
-            elements.resetBtn.click();
         }
     }
 
-    // Scale calculation helper (resolves CSS displayed coordinates vs real media pixels)
+    // Layout Scale Sync
     function recalculateScaling() {
         const wrapperRect = elements.mediaWrapper.getBoundingClientRect();
-        
-        // Find actual display bounds of the media inside the flexbox container
         let displayedWidth, displayedHeight;
         const mediaRatio = state.originalWidth / state.originalHeight;
         const viewportRatio = wrapperRect.width / wrapperRect.height;
-        
+
         if (mediaRatio > viewportRatio) {
             displayedWidth = wrapperRect.width;
             displayedHeight = wrapperRect.width / mediaRatio;
@@ -227,31 +274,171 @@ document.addEventListener('DOMContentLoaded', () => {
             displayedHeight = wrapperRect.height;
             displayedWidth = wrapperRect.height * mediaRatio;
         }
-        
-        // Match overlay coordinates with actual displayed media elements
+
         elements.interactiveOverlay.style.width = displayedWidth + 'px';
         elements.interactiveOverlay.style.height = displayedHeight + 'px';
-        
+
+        elements.brushMaskCanvas.style.width = displayedWidth + 'px';
+        elements.brushMaskCanvas.style.height = displayedHeight + 'px';
+        elements.heatmapCanvas.style.width = displayedWidth + 'px';
+        elements.heatmapCanvas.style.height = displayedHeight + 'px';
+
         state.scaleX = state.originalWidth / displayedWidth;
         state.scaleY = state.originalHeight / displayedHeight;
-        
+
         renderBoxes();
+        renderBrushMaskCanvas();
     }
 
     window.addEventListener('resize', () => {
-        if (state.file) {
-            recalculateScaling();
-        }
+        if (state.file) recalculateScaling();
     });
 
     // ----------------------------------------------------
-    // ALGORITHMS: WATERMARK & LOGO DETECTION
+    // ADVANCED TIMELINE PLAYBACK & CONTROLS
     // ----------------------------------------------------
+    elements.playPauseBtn.addEventListener('click', togglePlay);
+    elements.timelineSlider.addEventListener('input', handleTimelineSliderInput);
+    elements.timelineSlider.addEventListener('mousedown', () => state.timelineScrubbing = true);
+    window.addEventListener('mouseup', () => {
+        if (state.timelineScrubbing) {
+            state.timelineScrubbing = false;
+            if (state.isPlaying) elements.previewVideo.play();
+        }
+    });
 
-    // Video Timeline Analysis: Average frames to isolate static elements
+    function togglePlay() {
+        if (state.fileType !== 'video') return;
+        state.isPlaying = !state.isPlaying;
+        if (state.isPlaying) {
+            elements.previewVideo.play();
+            elements.playIcon.classList.add('hidden');
+            elements.pauseIcon.classList.remove('hidden');
+            updatePlaybackProgress();
+        } else {
+            elements.previewVideo.pause();
+            elements.playIcon.classList.remove('hidden');
+            elements.pauseIcon.classList.add('hidden');
+        }
+    }
+
+    function handleTimelineSliderInput(e) {
+        if (state.fileType !== 'video') return;
+        const time = parseFloat(e.target.value) / 100;
+        elements.previewVideo.currentTime = time;
+        elements.timelineCurrentTime.textContent = formatTime(time);
+        elements.timelinePlayheadFill.style.width = (time / state.videoDuration * 100) + '%';
+        renderBoxes(); // Refresh box visibility according to current timeline position
+    }
+
+    function updatePlaybackProgress() {
+        if (!state.isPlaying || state.timelineScrubbing || state.fileType !== 'video') return;
+        const time = elements.previewVideo.currentTime;
+        elements.timelineSlider.value = Math.floor(time * 100);
+        elements.timelineCurrentTime.textContent = formatTime(time);
+        elements.timelinePlayheadFill.style.width = (time / state.videoDuration * 100) + '%';
+        renderBoxes(); // Sync temporal range boxes on overlay
+        requestAnimationFrame(updatePlaybackProgress);
+    }
+
+    // ----------------------------------------------------
+    // ADVANCED TOOL SWITCHING & SETTINGS
+    // ----------------------------------------------------
+    elements.toolBox.addEventListener('click', () => setToolMode('box'));
+    elements.toolBrush.addEventListener('click', () => setToolMode('brush'));
+    elements.toolClone.addEventListener('click', () => setToolMode('clone'));
+
+    elements.brushSizeSlider.addEventListener('input', (e) => {
+        state.brushSize = parseInt(e.target.value);
+        elements.brushSizeVal.textContent = state.brushSize + 'px';
+        updateBrushCursor();
+    });
+
+    elements.modeDiffusion.addEventListener('click', () => setRemovalMode('diffusion'));
+    elements.modeClone.addEventListener('click', () => setRemovalMode('clone'));
+
+    elements.featherSlider.addEventListener('input', (e) => {
+        state.feather = parseInt(e.target.value);
+        elements.featherVal.textContent = state.feather + 'px';
+    });
+
+    elements.sensitivitySlider.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value);
+        state.sensitivity = val;
+        const labels = ['Low', 'Medium', 'High'];
+        elements.sensitivityVal.textContent = labels[val - 1];
+        if (state.fileType) detectWatermarks();
+    });
+
+    function setToolMode(mode) {
+        state.toolMode = mode;
+        elements.toolBox.classList.toggle('active', mode === 'box');
+        elements.toolBrush.classList.toggle('active', mode === 'brush');
+        elements.toolClone.classList.toggle('active', mode === 'clone');
+
+        elements.brushSizeControl.classList.toggle('hidden', mode === 'box');
+        
+        // Update overlay instruction
+        if (mode === 'box') {
+            elements.interactiveOverlay.style.cursor = 'crosshair';
+            elements.brushMaskCanvas.style.pointerEvents = 'none';
+            showToast("Box Mode: Draw bounding box targets");
+        } else if (mode === 'brush') {
+            elements.interactiveOverlay.style.cursor = 'none';
+            elements.brushMaskCanvas.style.pointerEvents = 'all';
+            showToast("Brush Mode: Draw custom mask paths directly");
+        } else if (mode === 'clone') {
+            elements.interactiveOverlay.style.cursor = 'crosshair';
+            elements.brushMaskCanvas.style.pointerEvents = 'none';
+            showToast("Clone Mode: Place clone stamp box");
+        }
+        
+        updateBrushCursor();
+        renderBoxes();
+    }
+
+    function setRemovalMode(mode) {
+        state.removalMode = mode;
+        elements.modeDiffusion.classList.toggle('active', mode === 'diffusion');
+        elements.modeClone.classList.toggle('active', mode === 'clone');
+        elements.cloneStampSettings.classList.toggle('hidden', mode === 'diffusion');
+        renderBoxes();
+    }
+
+    // Custom Brush Pointer
+    const brushPointer = document.createElement('div');
+    brushPointer.className = 'brush-cursor-indicator';
+    elements.mediaWrapper.appendChild(brushPointer);
+
+    elements.interactiveOverlay.addEventListener('mousemove', (e) => {
+        if (state.toolMode === 'brush') {
+            const rect = elements.interactiveOverlay.getBoundingClientRect();
+            brushPointer.style.display = 'block';
+            brushPointer.style.left = (e.clientX - rect.left) + 'px';
+            brushPointer.style.top = (e.clientY - rect.top) + 'px';
+        } else {
+            brushPointer.style.display = 'none';
+        }
+    });
+
+    elements.interactiveOverlay.addEventListener('mouseleave', () => {
+        brushPointer.style.display = 'none';
+    });
+
+    function updateBrushCursor() {
+        if (state.toolMode === 'brush') {
+            const displaySize = Math.round(state.brushSize / (state.scaleX || 1));
+            brushPointer.style.width = displaySize + 'px';
+            brushPointer.style.height = displaySize + 'px';
+        }
+    }
+
+    // ----------------------------------------------------
+    // ADVANCED ALGORITHMS: STATIC HEATMAP SCANNER
+    // ----------------------------------------------------
     async function runVideoTimelineAnalysis() {
-        elements.statusTitle.textContent = "Analyzing Video";
-        elements.statusDesc = "Extracting video frames across timeline to spot stationary logos...";
+        elements.statusTitle.textContent = "Advanced Scrutiny";
+        elements.statusDesc.textContent = "Scanning temporal pixel variances to map static watermark heat zones...";
         elements.progressPercent.textContent = "0%";
         elements.progressBarFill.style.width = "0%";
         elements.renderPreviewWrapper.style.display = "block";
@@ -261,73 +448,141 @@ document.addEventListener('DOMContentLoaded', () => {
         video.src = state.objectUrl;
         video.muted = true;
         video.playsInline = true;
-        
         await new Promise(r => video.onloadedmetadata = r);
 
         const samplePoints = 12;
+        const wScan = 400;
+        const hScan = Math.round(wScan * (state.originalHeight / state.originalWidth));
+        
         const canvas = document.createElement('canvas');
-        canvas.width = 400; // Smaller resolution is fine for detection (faster!)
-        canvas.height = Math.round(400 * (state.originalHeight / state.originalWidth));
+        canvas.width = wScan;
+        canvas.height = hScan;
         const ctx = canvas.getContext('2d');
-        
-        const previewCanvasCtx = elements.renderPreviewCanvas.getContext('2d');
-        elements.renderPreviewCanvas.width = canvas.width;
-        elements.renderPreviewCanvas.height = canvas.height;
 
-        const accumulator = new Float32Array(canvas.width * canvas.height * 3);
-        
+        const previewCanvasCtx = elements.renderPreviewCanvas.getContext('2d');
+        elements.renderPreviewCanvas.width = wScan;
+        elements.renderPreviewCanvas.height = hScan;
+
+        // Frames buffer to compute standard deviation
+        const frames = [];
+
         for (let i = 0; i < samplePoints; i++) {
-            // Seek to interval positions
             const time = (state.videoDuration * (i + 0.5)) / samplePoints;
             video.currentTime = time;
-            
-            await new Promise(resolve => {
-                video.onseeked = resolve;
-            });
-            
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            
-            // Render small preview in the modal
+            await new Promise(resolve => video.onseeked = resolve);
+
+            ctx.drawImage(video, 0, 0, wScan, hScan);
             previewCanvasCtx.drawImage(canvas, 0, 0);
-            
-            // Add frames together
-            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const data = imgData.data;
-            for (let p = 0; p < data.length / 4; p++) {
-                accumulator[p * 3] += data[p * 4];
-                accumulator[p * 3 + 1] += data[p * 4 + 1];
-                accumulator[p * 3 + 2] += data[p * 4 + 2];
-            }
+
+            const imgData = ctx.getImageData(0, 0, wScan, hScan);
+            frames.push(imgData.data);
 
             const percent = Math.round(((i + 1) / samplePoints) * 100);
             elements.progressPercent.textContent = percent + "%";
             elements.progressBarFill.style.width = percent + "%";
         }
 
-        // Divide accumulator to get the average frame image
+        // Calculate Mean and Standard Deviation per pixel
         const avgCanvas = document.createElement('canvas');
-        avgCanvas.width = canvas.width;
-        avgCanvas.height = canvas.height;
+        avgCanvas.width = wScan;
+        avgCanvas.height = hScan;
         const avgCtx = avgCanvas.getContext('2d');
-        const avgImgData = avgCtx.createImageData(canvas.width, canvas.height);
+        const avgImgData = avgCtx.createImageData(wScan, hScan);
         const avgData = avgImgData.data;
 
-        for (let p = 0; p < avgData.length / 4; p++) {
-            avgData[p * 4] = Math.round(accumulator[p * 3] / samplePoints);
-            avgData[p * 4 + 1] = Math.round(accumulator[p * 3 + 1] / samplePoints);
-            avgData[p * 4 + 2] = Math.round(accumulator[p * 3 + 2] / samplePoints);
-            avgData[p * 4 + 3] = 255;
+        // Variance Map
+        const varCanvas = document.createElement('canvas');
+        varCanvas.width = wScan;
+        varCanvas.height = hScan;
+        const varCtx = varCanvas.getContext('2d');
+        const varImgData = varCtx.createImageData(wScan, hScan);
+        const varData = varImgData.data;
+
+        const N = samplePoints;
+
+        for (let p = 0; p < wScan * hScan; p++) {
+            const offset = p * 4;
+            let sumR = 0, sumG = 0, sumB = 0;
+            
+            for (let f = 0; f < N; f++) {
+                sumR += frames[f][offset];
+                sumG += frames[f][offset + 1];
+                sumB += frames[f][offset + 2];
+            }
+            
+            const meanR = sumR / N;
+            const meanG = sumG / N;
+            const meanB = sumB / N;
+
+            avgData[offset] = Math.round(meanR);
+            avgData[offset + 1] = Math.round(meanG);
+            avgData[offset + 2] = Math.round(meanB);
+            avgData[offset + 3] = 255;
+
+            // Variance: sum((x - mean)^2) / N
+            let sqSumR = 0, sqSumG = 0, sqSumB = 0;
+            for (let f = 0; f < N; f++) {
+                sqSumR += Math.pow(frames[f][offset] - meanR, 2);
+                sqSumG += Math.pow(frames[f][offset + 1] - meanG, 2);
+                sqSumB += Math.pow(frames[f][offset + 2] - meanB, 2);
+            }
+
+            const stdDev = Math.sqrt((sqSumR + sqSumG + sqSumB) / (3 * N));
+            
+            // Map stdDev to visual indicator: Low variance is highlighted (inverse)
+            const staticWeight = Math.max(0, 255 - stdDev * 4);
+            varData[offset] = Math.round(staticWeight); // Red path
+            varData[offset + 1] = 0;
+            varData[offset + 2] = Math.round(staticWeight * 0.8); // Purple hues
+            varData[offset + 3] = 255;
         }
+
         avgCtx.putImageData(avgImgData, 0, 0);
+        varCtx.putImageData(varImgData, 0, 0);
 
         state.averageFrameData = avgCanvas;
-        elements.processingModal.classList.remove('show');
-        showToast('Timeline analysis complete. Suggesting watermarks...');
+        state.varianceFrameData = varCanvas;
         
+        // Generate Thermal glowing overlay
+        generateHeatmapOverlay(wScan, hScan);
+
+        elements.processingModal.classList.remove('show');
+        showToast('Timeline analysis complete. Suggesting static targets...');
         detectWatermarks();
     }
 
-    // Edge Detection & Layout clustering to auto-suggest watermark boxes
+    function generateHeatmapOverlay(wScan, hScan) {
+        const canvas = elements.heatmapCanvas;
+        const ctx = canvas.getContext('2d');
+        
+        // We scale the low-resolution variance map to full resolution
+        canvas.width = state.originalWidth;
+        canvas.height = state.originalHeight;
+
+        // Draw temporary variance map
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = wScan;
+        tempCanvas.height = hScan;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.drawImage(state.varianceFrameData, 0, 0);
+
+        ctx.filter = "blur(8px)"; // Smooth heatmap glow
+        ctx.drawImage(tempCanvas, 0, 0, state.originalWidth, state.originalHeight);
+        ctx.filter = "none";
+    }
+
+    elements.heatmapToggleBtn.addEventListener('click', () => {
+        if (!state.varianceFrameData) {
+            showToast("Heatmap scan is not compiled for this file.", "error");
+            return;
+        }
+        state.isHeatmapActive = !state.isHeatmapActive;
+        elements.heatmapToggleBtn.classList.toggle('active', state.isHeatmapActive);
+        elements.heatmapCanvas.classList.toggle('hidden', !state.isHeatmapActive);
+        showToast(state.isHeatmapActive ? "Heatmap view active: stationary zones glow purple" : "Heatmap disabled");
+    });
+
+    // Detect watermarks using edges combined with static heatmap checks
     function detectWatermarks() {
         let srcCanvas = document.createElement('canvas');
         const dWidth = 400;
@@ -344,36 +599,33 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Apply Sobel edge detection to isolate contrast blobs
         const imgData = ctx.getImageData(0, 0, dWidth, dHeight);
         const data = imgData.data;
         const edges = new Uint8Array(dWidth * dHeight);
 
-        // Simple Sobel filters
-        const Gx = [
-            [-1, 0, 1],
-            [-2, 0, 2],
-            [-1, 0, 1]
-        ];
-        const Gy = [
-            [-1, -2, -1],
-            [ 0,  0,  0],
-            [ 1,  2,  1]
-        ];
+        const Gx = [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]];
+        const Gy = [[-1, -2, -1], [0, 0, 0], [1, 2, 1]];
 
-        // Sensitivity threshold settings (Lower threshold means higher sensitivity)
-        const thresholds = [55, 38, 22];
+        const thresholds = [52, 35, 18];
         const edgeThreshold = thresholds[state.sensitivity - 1];
+
+        // Variance context check for video
+        let varCtx = null;
+        if (state.fileType === 'video' && state.varianceFrameData) {
+            const varTemp = document.createElement('canvas');
+            varTemp.width = dWidth;
+            varTemp.height = dHeight;
+            varCtx = varTemp.getContext('2d');
+            varCtx.drawImage(state.varianceFrameData, 0, 0, dWidth, dHeight);
+        }
 
         for (let y = 1; y < dHeight - 1; y++) {
             for (let x = 1; x < dWidth - 1; x++) {
-                let valX = 0;
-                let valY = 0;
+                let valX = 0, valY = 0;
 
                 for (let ky = -1; ky <= 1; ky++) {
                     for (let kx = -1; kx <= 1; kx++) {
                         const pixelIdx = ((y + ky) * dWidth + (x + kx)) * 4;
-                        // Grayscale conversion weight
                         const gray = 0.299 * data[pixelIdx] + 0.587 * data[pixelIdx + 1] + 0.114 * data[pixelIdx + 2];
                         valX += gray * Gx[ky + 1][kx + 1];
                         valY += gray * Gy[ky + 1][kx + 1];
@@ -381,24 +633,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 const magnitude = Math.sqrt(valX * valX + valY * valY);
-                edges[y * dWidth + x] = magnitude > edgeThreshold ? 255 : 0;
+                let pass = magnitude > edgeThreshold;
+
+                // For videos, we only consider edges that are static (low temporal variance)
+                if (pass && varCtx) {
+                    const varVal = varCtx.getImageData(x, y, 1, 1).data[0]; // Red channel represents static intensity
+                    pass = varVal > 80; // Must be static enough
+                }
+
+                edges[y * dWidth + x] = pass ? 255 : 0;
             }
         }
 
-        // Check for edge clumps in typical watermark positions: 4 corners & bottom center
-        // Let's divide these into 5 test boxes (normalized coordinates)
         const testZones = [
-            { id: 'top-left', name: 'Top Left Watermark', rx: 0.02, ry: 0.02, rw: 0.28, rh: 0.18 },
-            { id: 'top-right', name: 'Top Right Watermark', rx: 0.70, ry: 0.02, rw: 0.28, rh: 0.18 },
-            { id: 'bottom-left', name: 'Bottom Left Watermark', rx: 0.02, ry: 0.80, rw: 0.28, rh: 0.18 },
-            { id: 'bottom-right', name: 'Bottom Right Watermark', rx: 0.70, ry: 0.80, rw: 0.28, rh: 0.18 },
-            { id: 'bottom-center', name: 'Center/Stamp Logo', rx: 0.35, ry: 0.78, rw: 0.30, rh: 0.20 }
+            { id: 'top-left', name: 'Top Left Logo', rx: 0.02, ry: 0.02, rw: 0.25, rh: 0.15 },
+            { id: 'top-right', name: 'Top Right Logo', rx: 0.73, ry: 0.02, rw: 0.25, rh: 0.15 },
+            { id: 'bottom-left', name: 'Bottom Left Logo', rx: 0.02, ry: 0.83, rw: 0.25, rh: 0.15 },
+            { id: 'bottom-right', name: 'Bottom Right Logo', rx: 0.73, ry: 0.83, rw: 0.25, rh: 0.15 }
         ];
 
         state.boxes = [];
 
         testZones.forEach(zone => {
-            // Count active edge pixels in this zone
             const startX = Math.round(zone.rx * dWidth);
             const startY = Math.round(zone.ry * dHeight);
             const endX = Math.round((zone.rx + zone.rw) * dWidth);
@@ -409,16 +665,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             for (let y = startY; y < endY; y++) {
                 for (let x = startX; x < endX; x++) {
-                    if (edges[y * dWidth + x] === 255) {
-                        edgeCount++;
-                    }
+                    if (edges[y * dWidth + x] === 255) edgeCount++;
                 }
             }
 
             const density = edgeCount / totalZonePixels;
-            // If edge density is substantial, fit a tighter bounding box around the edge pixels
-            if (density > 0.02) {
-                // Find bounding extents of the edges inside this zone
+            if (density > 0.015) {
                 let minX = endX, maxX = startX, minY = endY, maxY = startY;
                 for (let y = startY; y < endY; y++) {
                     for (let x = startX; x < endX; x++) {
@@ -431,43 +683,42 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
-                // Add padding to bounding box
                 const pad = 12;
                 minX = Math.max(0, minX - pad);
                 maxX = Math.min(dWidth, maxX + pad);
                 minY = Math.max(0, minY - pad);
                 maxY = Math.min(dHeight, maxY + pad);
 
-                // Convert to original media coordinates
-                const xOrig = (minX / dWidth) * state.originalWidth;
-                const yOrig = (minY / dHeight) * state.originalHeight;
-                const wOrig = ((maxX - minX) / dWidth) * state.originalWidth;
-                const hOrig = ((maxY - minY) / dHeight) * state.originalHeight;
-
                 state.boxes.push({
                     id: 'auto-' + zone.id,
-                    x: Math.round(xOrig),
-                    y: Math.round(yOrig),
-                    w: Math.round(wOrig),
-                    h: Math.round(hOrig),
+                    x: Math.round((minX / dWidth) * state.originalWidth),
+                    y: Math.round((minY / dHeight) * state.originalHeight),
+                    w: Math.round(((maxX - minX) / dWidth) * state.originalWidth),
+                    h: Math.round(((maxY - minY) / dHeight) * state.originalHeight),
                     label: zone.name,
-                    selected: true
+                    selected: true,
+                    startTime: 0,
+                    endTime: state.videoDuration || 0,
+                    isBrushMask: false,
+                    cloneOffset: { x: 80, y: 0 }
                 });
             }
         });
 
-        // If no boxes detected, create one default target in bottom-right corner to guide user
+        // Default BR guide box if empty
         if (state.boxes.length === 0) {
-            const padW = Math.round(state.originalWidth * 0.22);
-            const padH = Math.round(state.originalHeight * 0.12);
             state.boxes.push({
                 id: 'suggest-br',
                 x: Math.round(state.originalWidth * 0.74),
                 y: Math.round(state.originalHeight * 0.84),
-                w: padW,
-                h: padH,
-                label: 'Suggested Box',
-                selected: false
+                w: Math.round(state.originalWidth * 0.22),
+                h: Math.round(state.originalHeight * 0.12),
+                label: 'Suggest Target',
+                selected: false,
+                startTime: 0,
+                endTime: state.videoDuration || 0,
+                isBrushMask: false,
+                cloneOffset: { x: -120, y: 0 }
             });
         }
 
@@ -477,53 +728,157 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ----------------------------------------------------
-    // BOX INTERACTION CONTROLLER (OVERLAY DRAWER)
+    // ADVANCED MOUSE BRUSH & CLONE EVENT HANDLING
     // ----------------------------------------------------
+    elements.brushMaskCanvas.addEventListener('mousedown', handleBrushStart);
+    elements.brushMaskCanvas.addEventListener('mousemove', handleBrushMove);
+    window.addEventListener('mouseup', handleBrushEnd);
 
-    // Mouse / Touch drawing on overlay
+    // Bounding Box dragging events (connected to overlay layer)
     elements.interactiveOverlay.addEventListener('mousedown', handleDrawStart);
     window.addEventListener('mousemove', handleDrawMove);
     window.addEventListener('mouseup', handleDrawEnd);
 
-    function handleDrawStart(e) {
-        if (state.activeResizer) return; // Let resizing take precedence
+    // FREEHAND MASK BRUSH DRAWING
+    function handleBrushStart(e) {
+        if (state.toolMode !== 'brush') return;
+        state.isBrushing = true;
+        
+        // Select or create custom brush mask group
+        let brushBox = state.boxes.find(b => b.isBrushMask);
+        if (!brushBox) {
+            brushBox = {
+                id: 'brush-mask-total',
+                x: 0, y: 0, w: state.originalWidth, h: state.originalHeight,
+                label: 'Freehand Mask',
+                selected: true,
+                startTime: 0,
+                endTime: state.videoDuration || 0,
+                isBrushMask: true,
+                paintedBounds: { minX: state.originalWidth, minY: state.originalHeight, maxX: 0, maxY: 0 }
+            };
+            state.boxes.push(brushBox);
+        }
+        
+        paintBrushStroke(e);
+    }
 
-        // Check if user clicked an existing box or handle
+    function handleBrushMove(e) {
+        if (!state.isBrushing || state.toolMode !== 'brush') return;
+        paintBrushStroke(e);
+    }
+
+    function handleBrushEnd() {
+        if (state.isBrushing) {
+            state.isBrushing = false;
+            updateDetectionsList();
+            updateProcessButtonState();
+        }
+    }
+
+    function paintBrushStroke(e) {
+        const canvas = elements.brushMaskCanvas;
+        const ctx = canvas.getContext('2d');
+        const rect = canvas.getBoundingClientRect();
+        
+        // Display space click coords
+        const dX = e.clientX - rect.left;
+        const dY = e.clientY - rect.top;
+
+        // Original media pixel space coords
+        const origX = dX * state.scaleX;
+        const origY = dY * state.scaleY;
+
+        // Draw onto visual feedback canvas overlay
+        ctx.fillStyle = '#ec4899'; // Semi-transparent magenta
+        ctx.beginPath();
+        ctx.arc(origX, origY, state.brushSize / 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Update bounding box extents for this custom brush shape
+        const brushBox = state.boxes.find(b => b.isBrushMask);
+        if (brushBox && brushBox.paintedBounds) {
+            const rad = state.brushSize / 2;
+            const left = Math.max(0, origX - rad);
+            const right = Math.min(state.originalWidth, origX + rad);
+            const top = Math.max(0, origY - rad);
+            const bottom = Math.min(state.originalHeight, origY + rad);
+
+            if (left < brushBox.paintedBounds.minX) brushBox.paintedBounds.minX = Math.round(left);
+            if (right > brushBox.paintedBounds.maxX) brushBox.paintedBounds.maxX = Math.round(right);
+            if (top < brushBox.paintedBounds.minY) brushBox.paintedBounds.minY = Math.round(top);
+            if (bottom > brushBox.paintedBounds.maxY) brushBox.paintedBounds.maxY = Math.round(bottom);
+
+            // Synchronize box boundaries with custom bounds
+            brushBox.x = brushBox.paintedBounds.minX;
+            brushBox.y = brushBox.paintedBounds.minY;
+            brushBox.w = brushBox.paintedBounds.maxX - brushBox.paintedBounds.minX;
+            brushBox.h = brushBox.paintedBounds.maxY - brushBox.paintedBounds.minY;
+        }
+    }
+
+    // Refresh overlay canvases (for brush paints)
+    function renderBrushMaskCanvas() {
+        const canvas = elements.brushMaskCanvas;
+        const ctx = canvas.getContext('2d');
+        
+        // Resize will clear context so redraw visual masks if present
+        const hasBrush = state.boxes.some(b => b.isBrushMask);
+        if (!hasBrush) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+    }
+
+    // BOX AND CLONE DRAGGING & DRAWER
+    function handleDrawStart(e) {
+        if (state.activeResizer) return;
+
+        // Check if clicked the Clone stamp Source Node indicator
+        const clickedSourceNode = e.target.closest('.clone-source-indicator');
+        if (clickedSourceNode) {
+            e.stopPropagation();
+            state.isDraggingCloneSource = true;
+            state.draggedBoxId = clickedSourceNode.dataset.id;
+            return;
+        }
+
         const clickedBox = e.target.closest('.bounding-box');
         if (clickedBox) {
             const boxId = clickedBox.dataset.id;
             selectBox(boxId);
-            
-            // Setup box dragging
+
             const box = state.boxes.find(b => b.id === boxId);
+            if (box.isBrushMask) return; // Freehand masks cannot be dragged directly
+
             state.isDraggingBox = true;
             state.draggedBoxId = boxId;
-            
-            const overlayRect = elements.interactiveOverlay.getBoundingClientRect();
+
+            const rect = elements.interactiveOverlay.getBoundingClientRect();
             state.dragStart = {
-                x: e.clientX - overlayRect.left - (box.x / state.scaleX),
-                y: e.clientY - overlayRect.top - (box.y / state.scaleY)
+                x: e.clientX - rect.left - (box.x / state.scaleX),
+                y: e.clientY - rect.top - (box.y / state.scaleY)
             };
             return;
         }
 
-        // Draw new box
-        const overlayRect = elements.interactiveOverlay.getBoundingClientRect();
-        state.isDrawing = true;
-        state.drawStart = {
-            x: e.clientX - overlayRect.left,
-            y: e.clientY - overlayRect.top
-        };
+        // DRAW NEW BOX (Box/Clone mode)
+        if (state.toolMode === 'box' || state.toolMode === 'clone') {
+            const rect = elements.interactiveOverlay.getBoundingClientRect();
+            state.isDrawing = true;
+            state.drawStart = {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
 
-        // Create temporary drawing div
-        const tempBox = document.createElement('div');
-        tempBox.id = 'drawing-box-temp';
-        tempBox.style.position = 'absolute';
-        tempBox.style.border = '2px dashed var(--secondary)';
-        tempBox.style.background = 'rgba(236, 72, 153, 0.1)';
-        tempBox.style.left = state.drawStart.x + 'px';
-        tempBox.style.top = state.drawStart.y + 'px';
-        elements.interactiveOverlay.appendChild(tempBox);
+            const temp = document.createElement('div');
+            temp.id = 'drawing-box-temp';
+            temp.style.position = 'absolute';
+            temp.style.border = state.toolMode === 'clone' ? '2.5px dotted var(--secondary)' : '2px dashed var(--primary)';
+            temp.style.background = state.toolMode === 'clone' ? 'rgba(236, 72, 153, 0.08)' : 'rgba(139, 92, 246, 0.1)';
+            temp.style.left = state.drawStart.x + 'px';
+            temp.style.top = state.drawStart.y + 'px';
+            elements.interactiveOverlay.appendChild(temp);
+        }
     }
 
     function handleDrawMove(e) {
@@ -532,40 +887,62 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const overlayRect = elements.interactiveOverlay.getBoundingClientRect();
+        const rect = elements.interactiveOverlay.getBoundingClientRect();
 
-        if (state.isDrawing) {
-            const currentX = Math.max(0, Math.min(overlayRect.width, e.clientX - overlayRect.left));
-            const currentY = Math.max(0, Math.min(overlayRect.height, e.clientY - overlayRect.top));
-
-            const left = Math.min(state.drawStart.x, currentX);
-            const top = Math.min(state.drawStart.y, currentY);
-            const width = Math.abs(state.drawStart.x - currentX);
-            const height = Math.abs(state.drawStart.y - currentY);
-
-            const tempBox = document.getElementById('drawing-box-temp');
-            if (tempBox) {
-                tempBox.style.left = left + 'px';
-                tempBox.style.top = top + 'px';
-                tempBox.style.width = width + 'px';
-                tempBox.style.height = height + 'px';
-            }
-        } else if (state.isDraggingBox) {
-            // Drag box inside boundaries
+        if (state.isDraggingCloneSource) {
+            // Dragging Clone stamp Source Offset point
             const box = state.boxes.find(b => b.id === state.draggedBoxId);
             if (!box) return;
 
-            const currentX = e.clientX - overlayRect.left - state.dragStart.x;
-            const currentY = e.clientY - overlayRect.top - state.dragStart.y;
+            const curXDisplay = e.clientX - rect.left;
+            const curYDisplay = e.clientY - rect.top;
 
-            const boxWidthOnOverlay = box.w / state.scaleX;
-            const boxHeightOnOverlay = box.h / state.scaleY;
+            const targetCenterX = (box.x + box.w / 2) / state.scaleX;
+            const targetCenterY = (box.y + box.h / 2) / state.scaleY;
 
-            const clampedX = Math.max(0, Math.min(overlayRect.width - boxWidthOnOverlay, currentX));
-            const clampedY = Math.max(0, Math.min(overlayRect.height - boxHeightOnOverlay, currentY));
+            // Calculate relative offset and map back to source scale
+            box.cloneOffset.x = Math.round((curXDisplay - targetCenterX) * state.scaleX);
+            box.cloneOffset.y = Math.round((curYDisplay - targetCenterY) * state.scaleY);
 
-            box.x = Math.round(clampedX * state.scaleX);
-            box.y = Math.round(clampedY * state.scaleY);
+            // Update details
+            elements.cloneOffsetX.textContent = (box.cloneOffset.x >= 0 ? '+' : '') + box.cloneOffset.x + 'px';
+            elements.cloneOffsetY.textContent = (box.cloneOffset.y >= 0 ? '+' : '') + box.cloneOffset.y + 'px';
+
+            renderBoxes();
+            return;
+        }
+
+        if (state.isDrawing) {
+            const curX = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+            const curY = Math.max(0, Math.min(rect.height, e.clientY - rect.top));
+
+            const left = Math.min(state.drawStart.x, curX);
+            const top = Math.min(state.drawStart.y, curY);
+            const w = Math.abs(state.drawStart.x - curX);
+            const h = Math.abs(state.drawStart.y - curY);
+
+            const temp = document.getElementById('drawing-box-temp');
+            if (temp) {
+                temp.style.left = left + 'px';
+                temp.style.top = top + 'px';
+                temp.style.width = w + 'px';
+                temp.style.height = h + 'px';
+            }
+        } else if (state.isDraggingBox) {
+            const box = state.boxes.find(b => b.id === state.draggedBoxId);
+            if (!box) return;
+
+            const curX = e.clientX - rect.left - state.dragStart.x;
+            const curY = e.clientY - rect.top - state.dragStart.y;
+
+            const dW = box.w / state.scaleX;
+            const dH = box.h / state.scaleY;
+
+            const cX = Math.max(0, Math.min(rect.width - dW, curX));
+            const cY = Math.max(0, Math.min(rect.height - dH, curY));
+
+            box.x = Math.round(cX * state.scaleX);
+            box.y = Math.round(cY * state.scaleY);
 
             renderBoxes();
             updateDetectionsList();
@@ -578,38 +955,52 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        if (state.isDraggingCloneSource) {
+            state.isDraggingCloneSource = false;
+            state.draggedBoxId = null;
+            return;
+        }
+
         if (state.isDrawing) {
             state.isDrawing = false;
-            const tempBox = document.getElementById('drawing-box-temp');
-            if (tempBox) {
-                const overlayRect = elements.interactiveOverlay.getBoundingClientRect();
-                const currentX = Math.max(0, Math.min(overlayRect.width, e.clientX - overlayRect.left));
-                const currentY = Math.max(0, Math.min(overlayRect.height, e.clientY - overlayRect.top));
+            const temp = document.getElementById('drawing-box-temp');
+            if (temp) {
+                const rect = elements.interactiveOverlay.getBoundingClientRect();
+                const curX = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+                const curY = Math.max(0, Math.min(rect.height, e.clientY - rect.top));
 
-                const left = Math.min(state.drawStart.x, currentX);
-                const top = Math.min(state.drawStart.y, currentY);
-                const width = Math.abs(state.drawStart.x - currentX);
-                const height = Math.abs(state.drawStart.y - currentY);
+                const left = Math.min(state.drawStart.x, curX);
+                const top = Math.min(state.drawStart.y, curY);
+                const w = Math.abs(state.drawStart.x - curX);
+                const h = Math.abs(state.drawStart.y - curY);
+                temp.remove();
 
-                tempBox.remove();
-
-                // Only create box if it's large enough (e.g. 10x10 px)
-                if (width > 12 && height > 12) {
-                    const newId = 'custom-' + Date.now();
+                if (w > 12 && h > 12) {
+                    const newId = 'box-' + Date.now();
+                    const isCloneTool = state.toolMode === 'clone';
+                    
                     state.boxes.push({
                         id: newId,
                         x: Math.round(left * state.scaleX),
                         y: Math.round(top * state.scaleY),
-                        w: Math.round(width * state.scaleX),
-                        h: Math.round(height * state.scaleY),
-                        label: 'Custom Mask',
-                        selected: true
+                        w: Math.round(w * state.scaleX),
+                        h: Math.round(h * state.scaleY),
+                        label: isCloneTool ? 'Clone Patch' : 'Custom Mask',
+                        selected: true,
+                        startTime: 0,
+                        endTime: state.videoDuration || 0,
+                        isBrushMask: false,
+                        cloneOffset: { x: isCloneTool ? 80 : 0, y: 0 }
                     });
-                    
+
                     renderBoxes();
                     selectBox(newId);
                     updateDetectionsList();
                     updateProcessButtonState();
+
+                    if (isCloneTool) {
+                        setRemovalMode('clone');
+                    }
                 }
             }
         }
@@ -620,54 +1011,36 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Setup Resizer handles interaction
+    // Handles resizing
     function setupResizer(handle, boxId, direction) {
         handle.addEventListener('mousedown', (e) => {
             e.stopPropagation();
             state.activeResizer = { boxId, direction };
-            
-            const overlayRect = elements.interactiveOverlay.getBoundingClientRect();
-            state.resizeOffset = {
-                x: e.clientX - overlayRect.left,
-                y: e.clientY - overlayRect.top
-            };
         });
     }
 
     function handleResize(e) {
         if (!state.activeResizer) return;
-
         const { boxId, direction } = state.activeResizer;
         const box = state.boxes.find(b => b.id === boxId);
         if (!box) return;
 
-        const overlayRect = elements.interactiveOverlay.getBoundingClientRect();
-        const curX = Math.max(0, Math.min(overlayRect.width, e.clientX - overlayRect.left));
-        const curY = Math.max(0, Math.min(overlayRect.height, e.clientY - overlayRect.top));
+        const rect = elements.interactiveOverlay.getBoundingClientRect();
+        const curX = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+        const curY = Math.max(0, Math.min(rect.height, e.clientY - rect.top));
 
-        // Get box coordinates in overlay space for editing
         let left = box.x / state.scaleX;
         let top = box.y / state.scaleY;
         let right = (box.x + box.w) / state.scaleX;
         let bottom = (box.y + box.h) / state.scaleY;
 
-        const minSize = 15; // Minimum size of box on overlay
+        const minSize = 15;
 
-        // Adjust coordinates depending on handle dragged
-        if (direction.includes('e')) {
-            right = Math.max(left + minSize, curX);
-        }
-        if (direction.includes('w')) {
-            left = Math.min(right - minSize, curX);
-        }
-        if (direction.includes('s')) {
-            bottom = Math.max(top + minSize, curY);
-        }
-        if (direction.includes('n')) {
-            top = Math.min(bottom - minSize, curY);
-        }
+        if (direction.includes('e')) right = Math.max(left + minSize, curX);
+        if (direction.includes('w')) left = Math.min(right - minSize, curX);
+        if (direction.includes('s')) bottom = Math.max(top + minSize, curY);
+        if (direction.includes('n')) top = Math.min(bottom - minSize, curY);
 
-        // Map back to original media pixel space
         box.x = Math.round(left * state.scaleX);
         box.y = Math.round(top * state.scaleY);
         box.w = Math.round((right - left) * state.scaleX);
@@ -677,7 +1050,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateDetectionsList();
     }
 
-    // Selecting a box highlights it and focuses the list item
+    // Box Focus highlights
     function selectBox(id) {
         state.activeBoxId = id;
         document.querySelectorAll('.bounding-box').forEach(el => {
@@ -686,20 +1059,33 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.detection-item').forEach(el => {
             el.classList.toggle('active', el.dataset.id === id);
         });
+        
+        // Update Clone Offset panel if the selected box has clone offset
+        const box = state.boxes.find(b => b.id === id);
+        if (box) {
+            elements.cloneOffsetX.textContent = (box.cloneOffset.x >= 0 ? '+' : '') + box.cloneOffset.x + 'px';
+            elements.cloneOffsetY.textContent = (box.cloneOffset.y >= 0 ? '+' : '') + box.cloneOffset.y + 'px';
+            if (box.label.includes('Clone') || state.removalMode === 'clone') {
+                setRemovalMode('clone');
+            }
+        }
+        renderBoxes();
     }
 
-    // Remove bounding box
     function removeBox(id) {
         state.boxes = state.boxes.filter(b => b.id !== id);
-        if (state.activeBoxId === id) {
-            state.activeBoxId = null;
+        if (state.activeBoxId === id) state.activeBoxId = null;
+        
+        if (id === 'brush-mask-total') {
+            const ctx = elements.brushMaskCanvas.getContext('2d');
+            ctx.clearRect(0, 0, elements.brushMaskCanvas.width, elements.brushMaskCanvas.height);
         }
+        
         renderBoxes();
         updateDetectionsList();
         updateProcessButtonState();
     }
 
-    // Toggle box inclusion for inpainting
     function toggleBoxSelection(id) {
         const box = state.boxes.find(b => b.id === id);
         if (box) {
@@ -710,50 +1096,62 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Clear all boxes
-    elements.clearMasksBtn.addEventListener('click', () => {
-        state.boxes = [];
-        state.activeBoxId = null;
-        renderBoxes();
-        updateDetectionsList();
-        updateProcessButtonState();
-    });
-
-    // Render Box elements onto screen overlay
+    // Render Bounding Boxes & Clone Stamp pointers on screen
     function renderBoxes() {
-        // Clear old overlays
-        const oldBoxes = elements.interactiveOverlay.querySelectorAll('.bounding-box');
+        const oldBoxes = elements.interactiveOverlay.querySelectorAll('.bounding-box, .clone-source-indicator, .clone-connector-line');
         oldBoxes.forEach(b => b.remove());
 
+        const currentVideoTime = state.fileType === 'video' ? elements.previewVideo.currentTime : 0;
+
         state.boxes.forEach(box => {
+            // Temporal Keyframe evaluation: Check if box is active at current timeline time
+            if (state.fileType === 'video') {
+                if (currentVideoTime < box.startTime || currentVideoTime > box.endTime) {
+                    return; // Skip rendering on overlay
+                }
+            }
+
+            if (box.isBrushMask) {
+                // Freehand painted shapes are already drawn on the canvas layer, bypass overlay
+                return;
+            }
+
             const el = document.createElement('div');
             el.className = `bounding-box ${state.activeBoxId === box.id ? 'active' : ''}`;
             el.dataset.id = box.id;
             
-            // Position on display overlay
-            el.style.left = (box.x / state.scaleX) + 'px';
-            el.style.top = (box.y / state.scaleY) + 'px';
-            el.style.width = (box.w / state.scaleX) + 'px';
-            el.style.height = (box.h / state.scaleY) + 'px';
+            const bX = box.x / state.scaleX;
+            const bY = box.y / state.scaleY;
+            const bW = box.w / state.scaleX;
+            const bH = box.h / state.scaleY;
+
+            el.style.left = bX + 'px';
+            el.style.top = bY + 'px';
+            el.style.width = bW + 'px';
+            el.style.height = bH + 'px';
             
-            // Mask opacity visualization depending on selection
-            el.style.background = box.selected ? 'rgba(139, 92, 246, 0.15)' : 'rgba(255, 255, 255, 0.05)';
-            if (!box.selected) {
+            const isClone = state.removalMode === 'clone' && (state.activeBoxId === box.id || box.label.includes('Clone'));
+            el.style.background = isClone ? 'rgba(236, 72, 153, 0.08)' : (box.selected ? 'rgba(139, 92, 246, 0.15)' : 'rgba(255, 255, 255, 0.05)');
+            
+            if (isClone) {
+                el.style.border = '2px dotted var(--secondary)';
+            } else if (!box.selected) {
                 el.style.borderStyle = 'dashed';
-                el.style.borderColor = 'rgba(255,255,255,0.4)';
+                el.style.borderColor = 'rgba(255, 255, 255, 0.4)';
                 el.style.boxShadow = 'none';
             }
 
-            // Top badge label
+            // Badge
             const badge = document.createElement('div');
             badge.className = 'bounding-box-badge';
+            badge.style.background = isClone ? 'var(--secondary)' : 'var(--primary)';
             badge.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                 ${box.label}
             `;
             el.appendChild(badge);
 
-            // Delete button
+            // Delete
             const close = document.createElement('div');
             close.className = 'bounding-box-close';
             close.innerHTML = '&times;';
@@ -763,7 +1161,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             el.appendChild(close);
 
-            // Add resize handles (Only if the box is highlighted active)
+            // Handles (Active focus)
             if (state.activeBoxId === box.id) {
                 const directions = ['nw', 'ne', 'se', 'sw', 'n', 's', 'e', 'w'];
                 directions.forEach(dir => {
@@ -775,15 +1173,47 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             elements.interactiveOverlay.appendChild(el);
+
+            // Draw Smart Clone Stamp Source Pointer node
+            if (isClone) {
+                const sX = bX + (bW / 2) + (box.cloneOffset.x / state.scaleX);
+                const sY = bY + (bH / 2) + (box.cloneOffset.y / state.scaleY);
+
+                // Connector line
+                const line = document.createElement('div');
+                line.className = 'clone-connector-line';
+                
+                const startX = bX + (bW / 2);
+                const startY = bY + (bH / 2);
+                
+                const dist = Math.sqrt(Math.pow(sX - startX, 2) + Math.pow(sY - startY, 2));
+                const angle = Math.atan2(sY - startY, sX - startX) * 180 / Math.PI;
+
+                line.style.width = dist + 'px';
+                line.style.left = startX + 'px';
+                line.style.top = startY + 'px';
+                line.style.transform = `rotate(${angle}deg)`;
+                elements.interactiveOverlay.appendChild(line);
+
+                // Source Node circle
+                const sourceNode = document.createElement('div');
+                sourceNode.className = 'clone-source-indicator';
+                sourceNode.dataset.id = box.id;
+                sourceNode.style.width = bW + 'px';
+                sourceNode.style.height = bH + 'px';
+                sourceNode.style.left = sX + 'px';
+                sourceNode.style.top = sY + 'px';
+                elements.interactiveOverlay.appendChild(sourceNode);
+            }
         });
         
         elements.clearMasksBtn.style.display = state.boxes.length > 0 ? 'inline-block' : 'none';
     }
 
-    // Sync detection sidebar listing cards
+    // Sync sidebar listings
     function updateDetectionsList() {
         if (state.boxes.length === 0) {
-            elements.detectionsList.innerHTML = `<div class="detections-placeholder">No watermarks selected. Click and drag on the media to select.</div>`;
+            elements.detectionsList.innerHTML = `<div class="detections-placeholder">No watermarks selected. Click and drag to create targets.</div>`;
             return;
         }
 
@@ -793,27 +1223,81 @@ document.addEventListener('DOMContentLoaded', () => {
             item.className = `detection-item ${box.selected ? 'selected' : ''} ${state.activeBoxId === box.id ? 'active' : ''}`;
             item.dataset.id = box.id;
 
+            const isVideo = state.fileType === 'video';
+
+            // Construct ranges
+            let timelineRangeHtml = '';
+            if (isVideo) {
+                timelineRangeHtml = `
+                    <div class="item-range-container">
+                        <div class="item-range-label">
+                            <span>Active timeline:</span>
+                            <span id="range-text-${box.id}">${formatTime(box.startTime)} - ${formatTime(box.endTime)}</span>
+                        </div>
+                        <div class="item-range-inputs">
+                            <input type="range" min="0" max="${Math.floor(state.videoDuration)}" value="${Math.floor(box.startTime)}" class="custom-range item-range-slider" id="start-time-${box.id}" step="1">
+                            <input type="range" min="0" max="${Math.floor(state.videoDuration)}" value="${Math.floor(box.endTime)}" class="custom-range item-range-slider" id="end-time-${box.id}" step="1">
+                        </div>
+                    </div>
+                `;
+            }
+
             item.innerHTML = `
-                <div class="detection-left">
+                <div class="detection-left" style="width: 85%;">
                     <div class="detection-checkbox">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                     </div>
-                    <div class="detection-info">
+                    <div class="detection-info" style="width: 100%;">
                         <span class="detection-name">${box.label}</span>
-                        <span class="detection-coords">${box.w}x${box.h} px at [${box.x}, ${box.y}]</span>
+                        <span class="detection-coords">${box.isBrushMask ? 'Painted shapes' : box.w + 'x' + box.h + ' px at [' + box.x + ', ' + box.y + ']'}</span>
+                        ${timelineRangeHtml}
                     </div>
                 </div>
-                <button class="delete-detection-btn" title="Delete logo mask">
+                <button class="delete-detection-btn" title="Delete watermark target">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
                 </button>
             `;
 
-            // Card highlight click handler
+            // Active timeline ranges inputs slider listeners
+            if (isVideo) {
+                setTimeout(() => {
+                    const startSld = document.getElementById(`start-time-${box.id}`);
+                    const endSld = document.getElementById(`end-time-${box.id}`);
+                    const rangeTxt = document.getElementById(`range-text-${box.id}`);
+
+                    if (startSld && endSld) {
+                        startSld.addEventListener('input', (e) => {
+                            let startVal = parseFloat(e.target.value);
+                            if (startVal >= box.endTime) {
+                                startVal = box.endTime - 0.2;
+                                startSld.value = startVal;
+                            }
+                            box.startTime = startVal;
+                            rangeTxt.textContent = `${formatTime(box.startTime)} - ${formatTime(box.endTime)}`;
+                            renderBoxes();
+                        });
+
+                        endSld.addEventListener('input', (e) => {
+                            let endVal = parseFloat(e.target.value);
+                            if (endVal <= box.startTime) {
+                                endVal = box.startTime + 0.2;
+                                endSld.value = endVal;
+                            }
+                            box.endTime = endVal;
+                            rangeTxt.textContent = `${formatTime(box.startTime)} - ${formatTime(box.endTime)}`;
+                            renderBoxes();
+                        });
+                    }
+                }, 0);
+            }
+
             item.addEventListener('click', (e) => {
                 if (e.target.closest('.delete-detection-btn')) {
                     removeBox(box.id);
                 } else if (e.target.closest('.detection-checkbox') || e.target.classList.contains('detection-checkbox')) {
                     toggleBoxSelection(box.id);
+                } else if (e.target.closest('.item-range-container')) {
+                    // Let sliders handle clicks
                 } else {
                     selectBox(box.id);
                 }
@@ -824,23 +1308,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateProcessButtonState() {
-        const hasSelected = state.boxes.some(b => boxSelectedAndValid(b));
+        const hasSelected = state.boxes.some(b => b.selected && (b.isBrushMask || (b.w > 2 && b.h > 2)));
         elements.processBtn.disabled = !hasSelected;
     }
 
-    function boxSelectedAndValid(box) {
-        return box.selected && box.w > 2 && box.h > 2;
+    // ----------------------------------------------------
+    // RESTORATION & CLONE STAMP ENGINES
+    // ----------------------------------------------------
+    function runInpaint(ctx, box) {
+        if (state.removalMode === 'clone' || box.label.includes('Clone')) {
+            runSmartClone(ctx, box);
+        } else {
+            runOnionDiffusion(ctx, box);
+        }
     }
 
-    // ----------------------------------------------------
-    // CORE RESTORATION / INPAINTING ENGINE
-    // ----------------------------------------------------
-
-    // Inpaint a bounding box region using border diffusion / onion peeling interpolation
-    function inpaintRegion(ctx, box) {
-        const margin = 10; // Pixels surrounding box to sample background from
-        
-        // Clamp coordinates within canvas boundaries
+    // onion peeling background diffusion restoration algorithm
+    function runOnionDiffusion(ctx, box) {
+        const margin = 10;
         const xVal = Math.max(margin, box.x);
         const yVal = Math.max(margin, box.y);
         const wVal = Math.min(state.originalWidth - xVal - margin, box.w);
@@ -848,7 +1333,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (wVal <= 0 || hVal <= 0) return;
 
-        // Fetch sub-image region including margin border
         const srcX = xVal - margin;
         const srcY = yVal - margin;
         const srcW = wVal + 2 * margin;
@@ -857,24 +1341,39 @@ document.addEventListener('DOMContentLoaded', () => {
         const imgData = ctx.getImageData(srcX, srcY, srcW, srcH);
         const pixels = imgData.data;
 
-        // Mask initialization: 1 represents pixels that need restoration
+        // Mask mapping: 1 means we need to inpaint this pixel
         const mask = new Uint8Array(srcW * srcH);
-        
-        // Mark box interior as masked
-        for (let y = margin; y < margin + hVal; y++) {
-            for (let x = margin; x < margin + wVal; x++) {
-                mask[y * srcW + x] = 1;
+
+        if (box.isBrushMask) {
+            // Retrieve custom painted mask strokes from mask canvas
+            const maskTempCanvas = document.createElement('canvas');
+            maskTempCanvas.width = state.originalWidth;
+            maskTempCanvas.height = state.originalHeight;
+            const maskTempCtx = maskTempCanvas.getContext('2d');
+            maskTempCtx.drawImage(elements.brushMaskCanvas, 0, 0);
+
+            const brushMaskData = maskTempCtx.getImageData(srcX, srcY, srcW, srcH).data;
+            for (let y = 0; y < srcH; y++) {
+                for (let x = 0; x < srcW; x++) {
+                    const idx = y * srcW + x;
+                    // Non-zero alpha or red represents mask paint
+                    mask[idx] = (brushMaskData[idx * 4 + 3] > 80 || brushMaskData[idx * 4] > 80) ? 1 : 0;
+                }
+            }
+        } else {
+            // Bounding box fill mask
+            for (let y = margin; y < margin + hVal; y++) {
+                for (let x = margin; x < margin + wVal; x++) {
+                    mask[y * srcW + x] = 1;
+                }
             }
         }
 
-        // Queue holds coordinates of border pixels (adjacent to unmasked background pixels)
+        // Initialize outer boundary coordinates queue
         let queue = [];
-        
-        // Scan for initial boundary pixels
-        for (let y = margin; y < margin + hVal; y++) {
-            for (let x = margin; x < margin + wVal; x++) {
+        for (let y = 1; y < srcH - 1; y++) {
+            for (let x = 1; x < srcW - 1; x++) {
                 const idx = y * srcW + x;
-                // Check 4 directions for background neighbors
                 if (mask[idx] === 1 && (
                     mask[idx - 1] === 0 || 
                     mask[idx + 1] === 0 || 
@@ -886,40 +1385,36 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Diffuse background colors inwards
+        // Propagate colors inwards
         while (queue.length > 0) {
             const nextQueue = [];
-            
             for (let i = 0; i < queue.length; i++) {
                 const idx = queue[i];
-                if (mask[idx] === 0) continue; // Already solved
+                if (mask[idx] === 0) continue;
 
-                let sumR = 0, sumG = 0, sumB = 0, count = 0;
-                
+                let rSum = 0, gSum = 0, bSum = 0, count = 0;
                 const neighbors = [idx - 1, idx + 1, idx - srcW, idx + srcW];
                 
                 neighbors.forEach(n => {
                     if (n >= 0 && n < mask.length && mask[n] === 0) {
-                        const pixelOffset = n * 4;
-                        sumR += pixels[pixelOffset];
-                        sumG += pixels[pixelOffset + 1];
-                        sumB += pixels[pixelOffset + 2];
+                        const offset = n * 4;
+                        rSum += pixels[offset];
+                        gSum += pixels[offset + 1];
+                        bSum += pixels[offset + 2];
                         count++;
                     }
                 });
 
                 if (count > 0) {
                     const offset = idx * 4;
-                    pixels[offset] = Math.round(sumR / count);
-                    pixels[offset + 1] = Math.round(sumG / count);
-                    pixels[offset + 2] = Math.round(sumB / count);
-                    mask[idx] = 0; // Mark solved
+                    pixels[offset] = Math.round(rSum / count);
+                    pixels[offset + 1] = Math.round(gSum / count);
+                    pixels[offset + 2] = Math.round(bSum / count);
+                    mask[idx] = 0; // Solved
 
-                    // Add adjacent unsolved pixels to the next queue pass
-                    const adjacents = [idx - 1, idx + 1, idx - srcW, idx + srcW];
-                    adjacents.forEach(adj => {
-                        if (adj >= 0 && adj < mask.length && mask[adj] === 1) {
-                            nextQueue.push(adj);
+                    neighbors.forEach(n => {
+                        if (n >= 0 && n < mask.length && mask[n] === 1) {
+                            nextQueue.push(n);
                         }
                     });
                 }
@@ -927,50 +1422,109 @@ document.addEventListener('DOMContentLoaded', () => {
             queue = nextQueue;
         }
 
-        // Apply a gentle blurring pass to blend boundary seams
-        const featherPixels = state.feather;
-        if (featherPixels > 0) {
-            // Apply slight box blur to border boundaries of the box region
-            const borderBox = margin;
-            for (let y = borderBox - 2; y < borderBox + hVal + 2; y++) {
-                for (let x = borderBox - 2; x < borderBox + wVal + 2; x++) {
-                    // Check if it lies close to the boundary box border
-                    const isNearXBorder = Math.abs(x - borderBox) <= 3 || Math.abs(x - (borderBox + wVal)) <= 3;
-                    const isNearYBorder = Math.abs(y - borderBox) <= 3 || Math.abs(y - (borderBox + hVal)) <= 3;
+        // Blending edge seams
+        if (state.feather > 0) {
+            for (let y = margin - 2; y < margin + hVal + 2; y++) {
+                for (let x = margin - 2; x < margin + wVal + 2; x++) {
+                    const isXBound = Math.abs(x - margin) <= 2 || Math.abs(x - (margin + wVal)) <= 2;
+                    const isYBound = Math.abs(y - margin) <= 2 || Math.abs(y - (margin + hVal)) <= 2;
                     
-                    if (isNearXBorder || isNearYBorder) {
-                        const centerIdx = (y * srcW + x) * 4;
-                        let r = 0, g = 0, b = 0, sumCount = 0;
-                        
-                        // 3x3 local pixel average
+                    if (isXBound || isYBound) {
+                        const center = (y * srcW + x) * 4;
+                        let r = 0, g = 0, b = 0, cCount = 0;
                         for (let dy = -1; dy <= 1; dy++) {
                             for (let dx = -1; dx <= 1; dx++) {
-                                const sampleIdx = ((y + dy) * srcW + (x + dx)) * 4;
-                                if (sampleIdx >= 0 && sampleIdx < pixels.length) {
-                                    r += pixels[sampleIdx];
-                                    g += pixels[sampleIdx + 1];
-                                    b += pixels[sampleIdx + 2];
-                                    sumCount++;
+                                const sample = ((y + dy) * srcW + (x + dx)) * 4;
+                                if (sample >= 0 && sample < pixels.length) {
+                                    r += pixels[sample];
+                                    g += pixels[sample + 1];
+                                    b += pixels[sample + 2];
+                                    cCount++;
                                 }
                             }
                         }
-                        
-                        pixels[centerIdx] = Math.round(r / sumCount);
-                        pixels[centerIdx + 1] = Math.round(g / sumCount);
-                        pixels[centerIdx + 2] = Math.round(b / sumCount);
+                        pixels[center] = Math.round(r / cCount);
+                        pixels[center + 1] = Math.round(g / cCount);
+                        pixels[center + 2] = Math.round(b / cCount);
                     }
                 }
             }
         }
 
-        // Draw restored region back to source canvas
         ctx.putImageData(imgData, srcX, srcY);
     }
 
-    // ----------------------------------------------------
-    // EXPORT PROCESS: IMAGES & VIDEOS
-    // ----------------------------------------------------
+    // Smart Clone Stamp replicator
+    function runSmartClone(ctx, box) {
+        const xVal = Math.max(0, box.x);
+        const yVal = Math.max(0, box.y);
+        const wVal = Math.min(state.originalWidth - xVal, box.w);
+        const hVal = Math.min(state.originalHeight - yVal, box.h);
 
+        if (wVal <= 0 || hVal <= 0) return;
+
+        // Clone source coords
+        const dx = box.cloneOffset.x;
+        const dy = box.cloneOffset.y;
+
+        // Fetch original texture source (uncorrupted background pixels)
+        const cleanCtx = document.createElement('canvas').getContext('2d');
+        const canvasWidth = state.originalWidth;
+        const canvasHeight = state.originalHeight;
+        cleanCtx.canvas.width = canvasWidth;
+        cleanCtx.canvas.height = canvasHeight;
+
+        if (state.fileType === 'image') {
+            cleanCtx.drawImage(elements.previewImage, 0, 0);
+        } else {
+            // Draw average clean static frames if available
+            if (state.averageFrameData) {
+                cleanCtx.drawImage(state.averageFrameData, 0, 0, canvasWidth, canvasHeight);
+            } else {
+                cleanCtx.drawImage(elements.previewVideo, 0, 0, canvasWidth, canvasHeight);
+            }
+        }
+
+        const cleanImgData = cleanCtx.getImageData(0, 0, canvasWidth, canvasHeight);
+        const cleanPixels = cleanImgData.data;
+
+        // Fetch current canvas frame context where edits are actively made
+        const currentImgData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
+        const currentPixels = currentImgData.data;
+
+        // Clone target mask
+        for (let y = yVal; y < yVal + hVal; y++) {
+            for (let x = xVal; x < xVal + wVal; x++) {
+                // Cloned source pixel coords
+                const srcX = Math.max(0, Math.min(canvasWidth - 1, x + dx));
+                const srcY = Math.max(0, Math.min(canvasHeight - 1, y + dy));
+
+                const targetOffset = (y * canvasWidth + x) * 4;
+                const sourceOffset = (srcY * canvasWidth + srcX) * 4;
+
+                // Simple feathering boundary blend inside the box margins
+                const marginX = Math.min(x - xVal, (xVal + wVal) - x);
+                const marginY = Math.min(y - yVal, (yVal + hVal) - y);
+                const borderDist = Math.min(marginX, marginY);
+                
+                const featherWidth = state.feather + 1;
+                let blendWeight = 1.0;
+                if (borderDist < featherWidth) {
+                    blendWeight = borderDist / featherWidth;
+                }
+
+                currentPixels[targetOffset] = Math.round(cleanPixels[sourceOffset] * blendWeight + currentPixels[targetOffset] * (1 - blendWeight));
+                currentPixels[targetOffset + 1] = Math.round(cleanPixels[sourceOffset + 1] * blendWeight + currentPixels[targetOffset + 1] * (1 - blendWeight));
+                currentPixels[targetOffset + 2] = Math.round(cleanPixels[sourceOffset + 2] * blendWeight + currentPixels[targetOffset + 2] * (1 - blendWeight));
+            }
+        }
+
+        ctx.putImageData(currentImgData, 0, 0);
+    }
+
+    // ----------------------------------------------------
+    // RENDER PROCESSING AND SAVE EXPORTS
+    // ----------------------------------------------------
     elements.processBtn.addEventListener('click', () => {
         if (state.fileType === 'image') {
             processImage();
@@ -979,16 +1533,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // PHOTO PROCESSING FLOW
+    // Image removal export
     function processImage() {
         elements.statusTitle.textContent = "Processing Image";
-        elements.statusDesc.textContent = "Removing watermarks and inpainting pixels...";
-        elements.progressPercent.textContent = "20%";
-        elements.progressBarFill.style.width = "20%";
+        elements.statusDesc.textContent = "Removing watermarks, signatures, and stamps...";
+        elements.progressPercent.textContent = "15%";
+        elements.progressBarFill.style.width = "15%";
         elements.renderPreviewWrapper.style.display = "none";
         elements.processingModal.classList.add('show');
 
-        // Draw image and apply edits to canvas
         const canvas = document.createElement('canvas');
         canvas.width = state.originalWidth;
         canvas.height = state.originalHeight;
@@ -998,26 +1551,30 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             elements.progressPercent.textContent = "50%";
             elements.progressBarFill.style.width = "50%";
-            
-            // Run pixel restoration on selected boxes
+
             state.boxes.forEach(box => {
-                if (boxSelectedAndValid(box)) {
-                    inpaintRegion(ctx, box);
+                if (box.selected) {
+                    runInpaint(ctx, box);
                 }
             });
-            
+
             elements.progressPercent.textContent = "90%";
             elements.progressBarFill.style.width = "90%";
 
-            const restoredDataUrl = canvas.toDataURL(state.file.type);
-            
-            elements.cleanImageBg.src = restoredDataUrl;
+            const restoredUrl = canvas.toDataURL(state.file.type);
+            elements.cleanImageBg.src = restoredUrl;
             elements.originalImageFg.src = state.objectUrl;
 
-            // Initialize slider alignment
+            // Trigger slider widgets
             elements.compSlider.value = 50;
-            updateSliderClipping(50);
-            
+            elements.originalImageFg.style.clipPath = `polygon(0 0, 50% 0, 50% 100%, 0 100%)`;
+            elements.compDivider.style.left = `50%`;
+            elements.compHandle.style.left = `50%`;
+
+            canvas.toBlob(blob => {
+                state.restoredBlob = blob;
+            }, state.file.type);
+
             setTimeout(() => {
                 elements.processingModal.classList.remove('show');
                 elements.mediaWrapper.classList.add('hidden');
@@ -1025,126 +1582,87 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 elements.processBtn.classList.add('hidden');
                 elements.downloadBtn.classList.remove('hidden');
-                
-                // Cache final blob for downloads
-                canvas.toBlob(blob => {
-                    state.restoredBlob = blob;
-                }, state.file.type);
-
-                showToast("Watermark removed successfully. Drag slider to compare!");
-            }, 500);
+                showToast("Watermark removed successfully. Compare Before & After!");
+            }, 600);
 
         }, 400);
     }
 
-    // Image comparison slider listeners
-    elements.compSlider.addEventListener('input', (e) => {
-        updateSliderClipping(e.target.value);
-    });
-
-    function updateSliderClipping(percent) {
-        // Clips original (top-layer) photo width dynamically
-        elements.originalImageFg.style.clipPath = `polygon(0 0, ${percent}% 0, ${percent}% 100%, 0 100%)`;
-        elements.compDivider.style.left = `${percent}%`;
-        elements.compHandle.style.left = `${percent}%`;
-    }
-
-    // VIDEO EXPORT FLOW: Frame-by-frame rendering and capture
+    // Video frame rendering timeline export
     async function processVideo() {
         state.processing = true;
         elements.statusTitle.textContent = "Processing Video";
-        elements.statusDesc.textContent = "Rendering and restoring pixels frame-by-frame. Please wait...";
+        elements.statusDesc.textContent = "Compiling keyframes, diffusing texture, and restoring audio...";
         elements.progressPercent.textContent = "0%";
         elements.progressBarFill.style.width = "0%";
         elements.renderPreviewWrapper.style.display = "block";
         elements.processingModal.classList.add('show');
 
-        // Setup hidden rendering video player
+        // Render playback source setup
         const renderVideo = document.createElement('video');
         renderVideo.src = state.objectUrl;
         renderVideo.muted = true;
         renderVideo.playsInline = true;
-        
         await new Promise(r => renderVideo.onloadedmetadata = r);
 
-        // Offscreen processing canvas
         const canvas = document.createElement('canvas');
         canvas.width = state.originalWidth;
         canvas.height = state.originalHeight;
         const ctx = canvas.getContext('2d');
 
-        // Stream Preview Canvas
-        const previewCanvasCtx = elements.renderPreviewCanvas.getContext('2d');
+        const previewCtx = elements.renderPreviewCanvas.getContext('2d');
         elements.renderPreviewCanvas.width = 320;
         elements.renderPreviewCanvas.height = Math.round(320 * (state.originalHeight / state.originalWidth));
 
-        // Attempt to extract original audio tracks
+        // Audio stream tracking
         let audioTrack = null;
         try {
-            // Try to capture original audio stream from playback element
-            const sourceStream = elements.previewVideo.captureStream ? 
-                                 elements.previewVideo.captureStream() : 
-                                 elements.previewVideo.mozCaptureStream();
-            if (sourceStream && sourceStream.getAudioTracks().length > 0) {
-                audioTrack = sourceStream.getAudioTracks()[0].clone();
+            const srcStream = elements.previewVideo.captureStream ? 
+                              elements.previewVideo.captureStream() : 
+                              elements.previewVideo.mozCaptureStream();
+            if (srcStream && srcStream.getAudioTracks().length > 0) {
+                audioTrack = srcStream.getAudioTracks()[0].clone();
             }
         } catch (e) {
-            console.warn("Could not capture audio stream: ", e);
+            console.warn("Muted or non-existent audio track: ", e);
         }
 
-        // Capture offscreen canvas output stream (e.g. at 30 fps)
         const fps = 30;
-        const stream = canvas.captureStream(fps);
-        
+        const canvasStream = canvas.captureStream(fps);
         if (audioTrack) {
-            stream.addTrack(audioTrack);
+            canvasStream.addTrack(audioTrack);
         }
 
-        // Set up MediaRecorder
         state.recordedChunks = [];
         let options = { mimeType: 'video/webm;codecs=vp9,opus' };
-        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-            options = { mimeType: 'video/webm;codecs=vp8,opus' };
-        }
-        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-            options = { mimeType: 'video/mp4' };
-        }
-        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-            options = {}; // Fallback
-        }
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/webm;codecs=vp8,opus' };
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/mp4' };
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) options = {};
 
         try {
-            state.mediaRecorder = new MediaRecorder(stream, options);
+            state.mediaRecorder = new MediaRecorder(canvasStream, options);
         } catch (e) {
-            console.error("MediaRecorder setup failed: ", e);
-            state.mediaRecorder = new MediaRecorder(stream);
+            state.mediaRecorder = new MediaRecorder(canvasStream);
         }
 
         state.mediaRecorder.ondataavailable = (e) => {
-            if (e.data.size > 0) {
-                state.recordedChunks.push(e.data);
-            }
+            if (e.data.size > 0) state.recordedChunks.push(e.data);
         };
 
         state.mediaRecorder.onstop = () => {
             const blob = new Blob(state.recordedChunks, { type: state.mediaRecorder.mimeType || 'video/webm' });
             state.restoredBlob = blob;
-            
-            // Clean up state
             state.processing = false;
-            elements.processingModal.classList.remove('show');
             
-            // Switch CTA button to download state
+            elements.processingModal.classList.remove('show');
             elements.processBtn.classList.add('hidden');
             elements.downloadBtn.classList.remove('hidden');
-            
-            showToast("Video processing complete! Ready to save.");
+            showToast("Video fully processed! Ready to save.");
         };
 
         state.mediaRecorder.start();
         renderVideo.play();
 
-        // High frequency processing loop
         function processLoop() {
             if (!state.processing) {
                 try {
@@ -1155,32 +1673,27 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (renderVideo.paused || renderVideo.ended) {
-                if (renderVideo.ended) {
-                    state.mediaRecorder.stop();
-                }
+                if (renderVideo.ended) state.mediaRecorder.stop();
                 return;
             }
 
-            // Draw current frame
             ctx.drawImage(renderVideo, 0, 0, canvas.width, canvas.height);
 
-            // Inpaint regions
+            const curTime = renderVideo.currentTime;
+
+            // Inpaint matching masks (Only active ones for current timestamp)
             state.boxes.forEach(box => {
-                if (boxSelectedAndValid(box)) {
-                    inpaintRegion(ctx, box);
+                if (box.selected && curTime >= box.startTime && curTime <= box.endTime) {
+                    runInpaint(ctx, box);
                 }
             });
 
-            // Draw preview panel thumbnail
-            previewCanvasCtx.drawImage(canvas, 0, 0, elements.renderPreviewCanvas.width, elements.renderPreviewCanvas.height);
+            previewCtx.drawImage(canvas, 0, 0, elements.renderPreviewCanvas.width, elements.renderPreviewCanvas.height);
 
-            // Update Progress UI
-            const progress = renderVideo.currentTime / renderVideo.duration;
-            const percent = Math.min(100, Math.round(progress * 100));
+            const percent = Math.min(100, Math.round((curTime / renderVideo.duration) * 100));
             elements.progressPercent.textContent = percent + "%";
             elements.progressBarFill.style.width = percent + "%";
 
-            // Next frame
             if (renderVideo.requestVideoFrameCallback) {
                 renderVideo.requestVideoFrameCallback(processLoop);
             } else {
@@ -1188,7 +1701,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Start processing loop
         if (renderVideo.requestVideoFrameCallback) {
             renderVideo.requestVideoFrameCallback(processLoop);
         } else {
@@ -1196,42 +1708,40 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Cancel Video Processing
     elements.cancelProcessBtn.addEventListener('click', () => {
         if (state.processing) {
             state.processing = false;
             if (state.mediaRecorder && state.mediaRecorder.state !== 'inactive') {
                 state.mediaRecorder.stop();
             }
-            showToast('Processing cancelled by user', 'error');
+            showToast('Processing cancelled', 'error');
             elements.processingModal.classList.remove('show');
         }
     });
 
-    // Save final restored media blob to computer disk
     elements.downloadBtn.addEventListener('click', () => {
-        if (!state.restoredBlob) {
-            showToast("No processed file found to download.", "error");
-            return;
-        }
-
-        // Generate download action
+        if (!state.restoredBlob) return;
         const link = document.createElement('a');
         link.href = URL.createObjectURL(state.restoredBlob);
         
-        // Match extension with file type
-        let extension = state.fileType === 'image' ? 'png' : 'webm';
+        let ext = state.fileType === 'image' ? 'png' : 'webm';
         if (state.fileType === 'video' && state.mediaRecorder.mimeType && state.mediaRecorder.mimeType.includes('mp4')) {
-            extension = 'mp4';
+            ext = 'mp4';
         }
-        
-        const origNameWithoutExt = state.file.name.substring(0, state.file.name.lastIndexOf('.')) || state.file.name;
-        link.download = `${origNameWithoutExt}_clear.${extension}`;
-        
+
+        const origName = state.file.name.substring(0, state.file.name.lastIndexOf('.')) || state.file.name;
+        link.download = `${origName}_clear.${ext}`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        
-        showToast("File downloaded successfully!");
+        showToast("File saved to downloads directory!");
+    });
+
+    // Comparison slider logic
+    elements.compSlider.addEventListener('input', (e) => {
+        const val = e.target.value;
+        elements.originalImageFg.style.clipPath = `polygon(0 0, ${val}% 0, ${val}% 100%, 0 100%)`;
+        elements.compDivider.style.left = `${val}%`;
+        elements.compHandle.style.left = `${val}%`;
     });
 });
