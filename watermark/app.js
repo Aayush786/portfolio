@@ -209,6 +209,26 @@ document.addEventListener('DOMContentLoaded', () => {
         setToolMode('box');
     });
 
+    // Clear all active masks/boxes
+    elements.clearMasksBtn.addEventListener('click', () => {
+        state.boxes = [];
+        state.activeBoxId = null;
+        const brushCtx = elements.brushMaskCanvas.getContext('2d');
+        brushCtx.clearRect(0, 0, elements.brushMaskCanvas.width, elements.brushMaskCanvas.height);
+        renderBoxes();
+        updateDetectionsList();
+        updateProcessButtonState();
+    });
+
+    // Remove Logo / Watermarks main processing event
+    elements.processBtn.addEventListener('click', () => {
+        if (state.fileType === 'image') {
+            processImage();
+        } else if (state.fileType === 'video') {
+            processVideo();
+        }
+    });
+
     // File Selector handler
     function handleFileSelect() {
         const file = elements.fileInput.files[0];
