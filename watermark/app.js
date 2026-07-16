@@ -195,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.mediaWrapper.classList.remove('hidden');
         elements.downloadBtn.classList.add('hidden');
         elements.processBtn.classList.remove('hidden');
-        elements.processBtn.disabled = true;
+        elements.processBtn.disabled = false;
         elements.clearMasksBtn.style.display = 'none';
 
         elements.editorView.classList.add('hidden');
@@ -222,6 +222,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Remove Logo / Watermarks main processing event
     elements.processBtn.addEventListener('click', () => {
+        const hasSelected = state.boxes.some(b => b.selected && (b.isBrushMask || (b.w > 2 && b.h > 2)));
+        if (!hasSelected) {
+            showToast("Please drag a box or paint a mask over the logo/watermark first!", "error");
+            return;
+        }
         if (state.fileType === 'image') {
             processImage();
         } else if (state.fileType === 'video') {
@@ -1280,6 +1285,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             elements.detectionsList.appendChild(item);
         });
+    }
+
+    function updateProcessButtonState() {
+        // Process button is always enabled so clicking it can guide the user if no selection is made
+        elements.processBtn.disabled = false;
     }
 
     // ----------------------------------------------------
