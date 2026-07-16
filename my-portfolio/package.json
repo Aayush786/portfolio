@@ -4,19 +4,36 @@
   "private": true,
   "homepage": ".",
   "dependencies": {
+    "express": "^5.2.1",
     "framer-motion": "^10.12.16",
+    "helmet": "^8.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-scripts": "5.0.1"
+    "react-helmet": "^6.1.0",
+    "react-scripts": "5.0.1",
+    "web-vitals": "^5.1.0"
   },
   "devDependencies": {
-    "autoprefixer": "^10.4.14",
-    "postcss": "^8.4.28",
-    "tailwindcss": "^3.3.3"
+    "autoprefixer": "^10.4.24",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.19"
   },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "start-server": "node server.js",
     "deploy": "vercel --prod"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
   }
 }
