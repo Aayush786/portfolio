@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
         activeBoxId: null,
         
         // Tool configurations
-        toolMode: 'box', // 'box', 'brush', 'clone'
+        toolMode: 'box', // 'box', 'brush', 'eraser', 'clone'
         brushSize: 25,
         isBrushing: false,
         removalMode: 'diffusion', // 'diffusion', 'clone'
@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Settings
         feather: 5,
         sensitivity: 2,
+        noiseLevel: 1, // Default noise injection level (0.5%)
         
         // Video specific
         videoDuration: 0,
@@ -60,6 +61,8 @@ document.addEventListener('DOMContentLoaded', () => {
         comparisonView: document.getElementById('comparison-view'),
         cleanImageBg: document.getElementById('clean-image-bg'),
         originalImageFg: document.getElementById('original-image-fg'),
+        cleanVideoBg: document.getElementById('clean-video-bg'),
+        originalVideoBg: document.getElementById('original-video-fg'),
         compSlider: document.getElementById('comp-slider'),
         compDivider: document.getElementById('comp-divider'),
         compHandle: document.getElementById('comp-handle'),
@@ -71,6 +74,8 @@ document.addEventListener('DOMContentLoaded', () => {
         clearMasksBtn: document.getElementById('clear-masks-btn'),
         featherSlider: document.getElementById('feather-slider'),
         featherVal: document.getElementById('feather-val'),
+        noiseSlider: document.getElementById('noise-slider'),
+        noiseVal: document.getElementById('noise-val'),
         sensitivitySlider: document.getElementById('sensitivity-slider'),
         sensitivityVal: document.getElementById('sensitivity-val'),
         processBtn: document.getElementById('process-btn'),
@@ -90,6 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Advanced Elements
         toolBox: document.getElementById('tool-box'),
         toolBrush: document.getElementById('tool-brush'),
+        toolEraser: document.getElementById('tool-eraser'),
         toolClone: document.getElementById('tool-clone'),
         brushSizeControl: document.getElementById('brush-size-control'),
         brushSizeSlider: document.getElementById('brush-size-slider'),
@@ -181,10 +187,13 @@ document.addEventListener('DOMContentLoaded', () => {
         state.isPlaying = false;
         state.isHeatmapActive = false;
 
+        // Reset elements
         elements.previewImage.src = '';
         elements.previewVideo.src = '';
         elements.cleanImageBg.src = '';
         elements.originalImageFg.src = '';
+        elements.cleanVideoBg.src = '';
+        elements.originalVideoBg.src = '';
 
         elements.previewImage.classList.add('hidden');
         elements.previewVideo.classList.add('hidden');
@@ -192,6 +201,11 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.heatmapCanvas.classList.add('hidden');
         elements.videoTimelineContainer.classList.add('hidden');
         elements.comparisonView.classList.add('hidden');
+        elements.cleanVideoBg.classList.add('hidden');
+        elements.originalVideoBg.classList.add('hidden');
+        elements.cleanImageBg.classList.remove('hidden');
+        elements.originalImageFg.classList.remove('hidden');
+
         elements.mediaWrapper.classList.remove('hidden');
         elements.downloadBtn.classList.add('hidden');
         elements.processBtn.classList.remove('hidden');
@@ -380,6 +394,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ----------------------------------------------------
     elements.toolBox.addEventListener('click', () => setToolMode('box'));
     elements.toolBrush.addEventListener('click', () => setToolMode('brush'));
+    elements.toolEraser.addEventListener('click', () => setToolMode('eraser'));
     elements.toolClone.addEventListener('click', () => setToolMode('clone'));
 
     elements.brushSizeSlider.addEventListener('input', (e) => {
@@ -396,6 +411,11 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.featherVal.textContent = state.feather + 'px';
     });
 
+    elements.noiseSlider.addEventListener('input', (e) => {
+        state.noiseLevel = parseInt(e.target.value);
+        elements.noiseVal.textContent = (state.noiseLevel * 0.5).toFixed(1) + '%';
+    });
+
     elements.sensitivitySlider.addEventListener('input', (e) => {
         const val = parseInt(e.target.value);
         state.sensitivity = val;
@@ -408,6 +428,7 @@ document.addEventListener('DOMContentLoaded', () => {
         state.toolMode = mode;
         elements.toolBox.classList.toggle('active', mode === 'box');
         elements.toolBrush.classList.toggle('active', mode === 'brush');
+        elements.toolEraser.classList.toggle('active', mode === 'eraser');
         elements.toolClone.classList.toggle('active', mode === 'clone');
 
         elements.brushSizeControl.classList.toggle('hidden', mode === 'box');
@@ -419,7 +440,13 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (mode === 'brush') {
             elements.interactiveOverlay.style.cursor = 'none';
             elements.brushMaskCanvas.style.pointerEvents = 'all';
+            brushPointer.style.borderColor = 'white';
             showToast("Brush Mode: Draw custom mask paths directly");
+        } else if (mode === 'eraser') {
+            elements.interactiveOverlay.style.cursor = 'none';
+            elements.brushMaskCanvas.style.pointerEvents = 'all';
+            brushPointer.style.borderColor = 'var(--secondary)';
+            showToast("Eraser Mode: Wipe off painted masks");
         } else if (mode === 'clone') {
             elements.interactiveOverlay.style.cursor = 'crosshair';
             elements.brushMaskCanvas.style.pointerEvents = 'none';
@@ -444,7 +471,7 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.mediaWrapper.appendChild(brushPointer);
 
     elements.interactiveOverlay.addEventListener('mousemove', (e) => {
-        if (state.toolMode === 'brush') {
+        if (state.toolMode === 'brush' || state.toolMode === 'eraser') {
             const rect = elements.interactiveOverlay.getBoundingClientRect();
             brushPointer.style.display = 'block';
             brushPointer.style.left = (e.clientX - rect.left) + 'px';
@@ -459,7 +486,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function updateBrushCursor() {
-        if (state.toolMode === 'brush') {
+        if (state.toolMode === 'brush' || state.toolMode === 'eraser') {
             const displaySize = Math.round(state.brushSize / (state.scaleX || 1));
             brushPointer.style.width = displaySize + 'px';
             brushPointer.style.height = displaySize + 'px';
@@ -751,7 +778,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('mouseup', handleDrawEnd);
 
     function handleBrushStart(e) {
-        if (state.toolMode !== 'brush') return;
+        if (state.toolMode !== 'brush' && state.toolMode !== 'eraser') return;
         state.isBrushing = true;
         
         let brushBox = state.boxes.find(b => b.isBrushMask);
@@ -773,7 +800,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handleBrushMove(e) {
-        if (!state.isBrushing || state.toolMode !== 'brush') return;
+        if (!state.isBrushing || (state.toolMode !== 'brush' && state.toolMode !== 'eraser')) return;
         paintBrushStroke(e);
     }
 
@@ -796,10 +823,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const origX = dX * state.scaleX;
         const origY = dY * state.scaleY;
 
-        ctx.fillStyle = '#ec4899'; 
+        // Custom Composition selection: Eraser Mode Support
+        if (state.toolMode === 'eraser') {
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.fillStyle = 'rgba(0, 0, 0, 1)';
+        } else {
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.fillStyle = '#ec4899'; 
+        }
+
         ctx.beginPath();
         ctx.arc(origX, origY, state.brushSize / 2, 0, Math.PI * 2);
         ctx.fill();
+
+        // Restore to standard composite
+        ctx.globalCompositeOperation = 'source-over';
 
         const brushBox = state.boxes.find(b => b.isBrushMask);
         if (brushBox && brushBox.paintedBounds) {
@@ -1303,7 +1341,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Onion Diffusion
+    // Onion Diffusion with Film Grain / Sensor Noise Integration
     function runOnionDiffusion(ctx, box) {
         const margin = 10;
         
@@ -1463,10 +1501,28 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        // FILM GRAIN / SENSOR NOISE INJECTION
+        if (state.noiseLevel > 0) {
+            const stdDev = state.noiseLevel * 2.5; 
+            for (let y = 0; y < srcH; y++) {
+                for (let x = 0; x < srcW; x++) {
+                    const idx = y * srcW + x;
+                    // Only apply grain on inpainted pixels to match sensor characteristics
+                    if (mask[idx] === 0) {
+                        const offset = idx * 4;
+                        const grain = (Math.random() - 0.5) * stdDev;
+                        pixels[offset] = Math.max(0, Math.min(255, pixels[offset] + grain));
+                        pixels[offset + 1] = Math.max(0, Math.min(255, pixels[offset + 1] + grain));
+                        pixels[offset + 2] = Math.max(0, Math.min(255, pixels[offset + 2] + grain));
+                    }
+                }
+            }
+        }
+
         ctx.putImageData(imgData, srcX, srcY);
     }
 
-    // Smart Clone Stamp
+    // Smart Clone Stamp with Grain injection
     function runSmartClone(ctx, box) {
         const xVal = Math.max(0, box.x);
         const yVal = Math.max(0, box.y);
@@ -1510,6 +1566,20 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        // FILM GRAIN / SENSOR NOISE INJECTION
+        if (state.noiseLevel > 0) {
+            const stdDev = state.noiseLevel * 2.5; 
+            for (let y = yVal; y < yVal + hVal; y++) {
+                for (let x = xVal; x < xVal + wVal; x++) {
+                    const targetOffset = (y * canvasWidth + x) * 4;
+                    const grain = (Math.random() - 0.5) * stdDev;
+                    currentPixels[targetOffset] = Math.max(0, Math.min(255, currentPixels[targetOffset] + grain));
+                    currentPixels[targetOffset + 1] = Math.max(0, Math.min(255, currentPixels[targetOffset + 1] + grain));
+                    currentPixels[targetOffset + 2] = Math.max(0, Math.min(255, currentPixels[targetOffset + 2] + grain));
+                }
+            }
+        }
+
         ctx.putImageData(currentImgData, 0, 0);
     }
 
@@ -1545,8 +1615,15 @@ document.addEventListener('DOMContentLoaded', () => {
             elements.progressBarFill.style.width = "90%";
 
             const restoredUrl = canvas.toDataURL(state.file.type);
+            
+            // Toggle Image Comparison elements
             elements.cleanImageBg.src = restoredUrl;
             elements.originalImageFg.src = state.objectUrl;
+
+            elements.cleanVideoBg.classList.add('hidden');
+            elements.originalVideoBg.classList.add('hidden');
+            elements.cleanImageBg.classList.remove('hidden');
+            elements.originalImageFg.classList.remove('hidden');
 
             elements.compSlider.value = 50;
             elements.originalImageFg.style.clipPath = `polygon(0 0, 50% 0, 50% 100%, 0 100%)`;
@@ -1570,7 +1647,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 400);
     }
 
-    // Video Export: Handles progress, auto-resume, and prevents 100% hangs
+    // Video Export
     async function processVideo() {
         state.processing = true;
         elements.statusTitle.textContent = "Processing Video";
@@ -1585,7 +1662,6 @@ document.addEventListener('DOMContentLoaded', () => {
         renderVideo.muted = true;
         renderVideo.playsInline = true;
 
-        // Force append video element to DOM to prevent resource sleeps
         renderVideo.style.position = 'absolute';
         renderVideo.style.top = '0';
         renderVideo.style.left = '0';
@@ -1657,22 +1733,44 @@ document.addEventListener('DOMContentLoaded', () => {
             state.restoredBlob = blob;
             state.processing = false;
 
-            // Load completed file directly into preview element for instant validation!
-            const newObjectUrl = URL.createObjectURL(blob);
-            elements.previewVideo.src = newObjectUrl;
-            elements.previewVideo.loop = true;
-            elements.previewVideo.play().catch(() => {});
-            
+            // Load synchronized before/after split videos
+            const restoredUrl = URL.createObjectURL(blob);
+            elements.cleanVideoBg.src = restoredUrl;
+            elements.originalVideoBg.src = state.objectUrl;
+
+            elements.cleanImageBg.classList.add('hidden');
+            elements.originalImageFg.classList.add('hidden');
+            elements.cleanVideoBg.classList.remove('hidden');
+            elements.originalVideoBg.classList.remove('hidden');
+
+            elements.compSlider.value = 50;
+            elements.originalVideoBg.style.clipPath = `polygon(0 0, 50% 0, 50% 100%, 0 100%)`;
+            elements.compDivider.style.left = `50%`;
+            elements.compHandle.style.left = `50%`;
+
+            // Start playing synchronised videos automatically
+            elements.cleanVideoBg.play().catch(() => {});
+            elements.originalVideoBg.play().catch(() => {});
+
+            // Strict temporal syncing listeners
+            elements.cleanVideoBg.onplay = () => elements.originalVideoBg.play().catch(() => {});
+            elements.cleanVideoBg.onpause = () => elements.originalVideoBg.pause();
+            elements.cleanVideoBg.onseeking = () => {
+                elements.originalVideoBg.currentTime = elements.cleanVideoBg.currentTime;
+            };
+
             elements.processingModal.classList.remove('show');
+            elements.mediaWrapper.classList.add('hidden');
+            elements.comparisonView.classList.remove('hidden');
+            
             elements.processBtn.classList.add('hidden');
             elements.downloadBtn.classList.remove('hidden');
-            showToast("Video fully processed! play preview or click download.");
+            showToast("Video processed! Drag slider to compare Before vs After.");
         };
 
         state.mediaRecorder.start();
         renderVideo.play().catch(e => {
             console.error("Playback start failed:", e);
-            // Try fallback trigger
             renderVideo.dispatchEvent(new Event('play'));
         });
 
@@ -1689,7 +1787,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const curTime = renderVideo.currentTime;
             const percent = Math.min(100, Math.round((curTime / renderVideo.duration) * 100));
 
-            // Bulletproof completion check: trigger stop if duration margin is met
             if (percent >= 100 || renderVideo.ended || curTime >= renderVideo.duration - 0.08) {
                 elements.progressPercent.textContent = "100%";
                 elements.progressBarFill.style.width = "100%";
@@ -1700,7 +1797,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Auto-resume if browser suspends playback due to focus shifts
             if (renderVideo.paused && !renderVideo.ended) {
                 renderVideo.play().catch(() => {});
             }
@@ -1766,10 +1862,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Comparison slider logic
+    // Sync comparison slider logic for both images and video elements
     elements.compSlider.addEventListener('input', (e) => {
         const val = e.target.value;
         elements.originalImageFg.style.clipPath = `polygon(0 0, ${val}% 0, ${val}% 100%, 0 100%)`;
+        elements.originalVideoBg.style.clipPath = `polygon(0 0, ${val}% 0, ${val}% 100%, 0 100%)`;
         elements.compDivider.style.left = `${val}%`;
         elements.compHandle.style.left = `${val}%`;
     });
