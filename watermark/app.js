@@ -582,7 +582,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast(state.isHeatmapActive ? "Heatmap view active: stationary zones glow purple" : "Heatmap disabled");
     });
 
-    // Detect watermarks
+    // Detect watermarks: Conservative edge limits prevent busy textures detection
     function detectWatermarks() {
         let srcCanvas = document.createElement('canvas');
         const dWidth = 400;
@@ -606,7 +606,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const Gx = [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]];
         const Gy = [[-1, -2, -1], [0, 0, 0], [1, 2, 1]];
 
-        const thresholds = [52, 35, 18];
+        const thresholds = [55, 42, 28];
         const edgeThreshold = thresholds[state.sensitivity - 1];
 
         let varCtx = null;
@@ -636,7 +636,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (pass && varCtx) {
                     const varVal = varCtx.getImageData(x, y, 1, 1).data[0]; 
-                    pass = varVal > 80; 
+                    pass = varVal > 95; 
                 }
 
                 edges[y * dWidth + x] = pass ? 255 : 0;
@@ -644,10 +644,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const testZones = [
-            { id: 'top-left', name: 'Top Left Logo', rx: 0.02, ry: 0.02, rw: 0.25, rh: 0.15 },
-            { id: 'top-right', name: 'Top Right Logo', rx: 0.73, ry: 0.02, rw: 0.25, rh: 0.15 },
-            { id: 'bottom-left', name: 'Bottom Left Logo', rx: 0.02, ry: 0.83, rw: 0.25, rh: 0.15 },
-            { id: 'bottom-right', name: 'Bottom Right Logo', rx: 0.73, ry: 0.83, rw: 0.25, rh: 0.15 }
+            { id: 'top-left', name: 'Top Left Logo', rx: 0.01, ry: 0.01, rw: 0.24, rh: 0.14 },
+            { id: 'top-right', name: 'Top Right Logo', rx: 0.75, ry: 0.01, rw: 0.24, rh: 0.14 },
+            { id: 'bottom-left', name: 'Bottom Left Logo', rx: 0.01, ry: 0.85, rw: 0.24, rh: 0.14 },
+            { id: 'bottom-right', name: 'Bottom Right Logo', rx: 0.75, ry: 0.85, rw: 0.24, rh: 0.14 }
         ];
 
         state.boxes = [];
@@ -668,7 +668,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const density = edgeCount / totalZonePixels;
-            if (density > 0.015) {
+            
+            // Limit density ceiling (density < 0.15) to ignore busy solid textures
+            if (density > 0.012 && density < 0.15) {
                 let minX = endX, maxX = startX, minY = endY, maxY = startY;
                 for (let y = startY; y < endY; y++) {
                     for (let x = startX; x < endX; x++) {
@@ -681,45 +683,36 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
-                const pad = 12;
-                minX = Math.max(0, minX - pad);
-                maxX = Math.min(dWidth, maxX + pad);
-                minY = Math.max(0, minY - pad);
-                maxY = Math.min(dHeight, maxY + pad);
+                const wBox = maxX - minX;
+                const hBox = maxY - minY;
 
-                state.boxes.push({
-                    id: 'auto-' + zone.id,
-                    x: Math.round((minX / dWidth) * state.originalWidth),
-                    y: Math.round((minY / dHeight) * state.originalHeight),
-                    w: Math.round(((maxX - minX) / dWidth) * state.originalWidth),
-                    h: Math.round(((maxY - minY) / dHeight) * state.originalHeight),
-                    label: zone.name,
-                    selected: true,
-                    startTime: 0,
-                    endTime: state.videoDuration || 0,
-                    isBrushMask: false,
-                    cloneOffset: { x: 80, y: 0 }
-                });
+                // Dimension checks: ignore tiny single pixels and full-zone giant blocks
+                if (wBox > 10 && hBox > 10 && wBox < (zone.rw * dWidth * 0.9)) {
+                    const pad = 8;
+                    minX = Math.max(startX, minX - pad);
+                    maxX = Math.min(endX, maxX + pad);
+                    minY = Math.max(startY, minY - pad);
+                    maxY = Math.min(endY, maxY + pad);
+
+                    state.boxes.push({
+                        id: 'auto-' + zone.id,
+                        x: Math.round((minX / dWidth) * state.originalWidth),
+                        y: Math.round((minY / dHeight) * state.originalHeight),
+                        w: Math.round(((maxX - minX) / dWidth) * state.originalWidth),
+                        h: Math.round(((maxY - minY) / dHeight) * state.originalHeight),
+                        label: zone.name,
+                        selected: true,
+                        startTime: 0,
+                        endTime: state.videoDuration || 0,
+                        isBrushMask: false,
+                        cloneOffset: { x: 80, y: 0 }
+                    });
+                }
             }
         });
 
-        // fallbacks selected by default for direct removal demo
-        if (state.boxes.length === 0) {
-            state.boxes.push({
-                id: 'suggest-br',
-                x: Math.round(state.originalWidth * 0.74),
-                y: Math.round(state.originalHeight * 0.84),
-                w: Math.round(state.originalWidth * 0.22),
-                h: Math.round(state.originalHeight * 0.12),
-                label: 'Suggested Box',
-                selected: true,
-                startTime: 0,
-                endTime: state.videoDuration || 0,
-                isBrushMask: false,
-                cloneOffset: { x: -120, y: 0 }
-            });
-        }
-
+        // NOTE: No fallback default boxes drawn to prevent random target generation!
+        
         renderBoxes();
         updateDetectionsList();
         updateProcessButtonState();
@@ -1183,7 +1176,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Sync sidebar listings
     function updateDetectionsList() {
         if (state.boxes.length === 0) {
-            elements.detectionsList.innerHTML = `<div class="detections-placeholder">No watermarks selected. Click and drag to create targets.</div>`;
+            elements.detectionsList.innerHTML = `<div class="detections-placeholder">No watermarks detected. Draw a box or paint a mask over the logo to remove.</div>`;
             return;
         }
 
@@ -1289,7 +1282,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Onion Diffusion: No coordinate shifting
+    // Onion Diffusion
     function runOnionDiffusion(ctx, box) {
         const margin = 10;
         
@@ -1314,7 +1307,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const imgData = ctx.getImageData(srcX, srcY, srcW, srcH);
         const pixels = imgData.data;
 
-        // Mask mapping
         const mask = new Uint8Array(srcW * srcH);
 
         if (box.isBrushMask) {
@@ -1453,7 +1445,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.putImageData(imgData, srcX, srcY);
     }
 
-    // Clone stamp
+    // Smart Clone Stamp
     function runSmartClone(ctx, box) {
         const xVal = Math.max(0, box.x);
         const yVal = Math.max(0, box.y);
@@ -1471,7 +1463,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentImgData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
         const currentPixels = currentImgData.data;
 
-        // Clone reference from current frame buffer (avoids self feedback)
         const tempPixels = new Uint8ClampedArray(currentPixels);
 
         for (let y = yVal; y < yVal + hVal; y++) {
@@ -1583,7 +1574,6 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.renderPreviewCanvas.width = 320;
         elements.renderPreviewCanvas.height = Math.round(320 * (state.originalHeight / state.originalWidth));
 
-        // Audio extraction from hidden rendering element
         let audioTrack = null;
         try {
             const renderStream = renderVideo.captureStream ? renderVideo.captureStream() : renderVideo.mozCaptureStream();
@@ -1602,7 +1592,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         state.recordedChunks = [];
         
-        // Optimizing codec selection for maximum playability (H.264/AAC WebM/MP4 > VP9/VP8)
         let options = { mimeType: 'video/webm;codecs=h264,opus' };
         if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/webm;codecs=h264' };
         if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/mp4;codecs=h264,aac' };
@@ -1654,7 +1643,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const curTime = renderVideo.currentTime;
 
-            // Inpaint matching masks (Only active ones for current timestamp)
             state.boxes.forEach(box => {
                 if (box.selected && curTime >= box.startTime && curTime <= box.endTime) {
                     runInpaint(ctx, box);
