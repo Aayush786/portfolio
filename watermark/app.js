@@ -602,7 +602,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast(state.isHeatmapActive ? "Heatmap view active: stationary zones glow purple" : "Heatmap disabled");
     });
 
-    // Detect watermarks: Conservative edge limits prevent busy textures detection
+    // Detect watermarks
     function detectWatermarks() {
         let srcCanvas = document.createElement('canvas');
         const dWidth = 400;
@@ -689,7 +689,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const density = edgeCount / totalZonePixels;
             
-            // Limit density ceiling (density < 0.15) to ignore busy solid textures
             if (density > 0.012 && density < 0.15) {
                 let minX = endX, maxX = startX, minY = endY, maxY = startY;
                 for (let y = startY; y < endY; y++) {
@@ -706,7 +705,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const wBox = maxX - minX;
                 const hBox = maxY - minY;
 
-                // Dimension checks: ignore tiny single pixels and full-zone giant blocks
                 if (wBox > 10 && hBox > 10 && wBox < (zone.rw * dWidth * 0.9)) {
                     const pad = 8;
                     minX = Math.max(startX, minX - pad);
@@ -731,8 +729,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // NOTE: No fallback default boxes drawn to prevent random target generation!
-        
         renderBoxes();
         updateDetectionsList();
         updateProcessButtonState();
@@ -1286,11 +1282,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function updateProcessButtonState() {
-        const hasSelected = state.boxes.some(b => b.selected && (b.isBrushMask || (b.w > 2 && b.h > 2)));
-        elements.processBtn.disabled = !hasSelected;
-    }
-
     // ----------------------------------------------------
     // RESTORATION & CLONE STAMP ENGINES
     // ----------------------------------------------------
@@ -1569,7 +1560,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 400);
     }
 
-    // Video Export
+    // Video Export: Handles progress, auto-resume, and prevents 100% hangs
     async function processVideo() {
         state.processing = true;
         elements.statusTitle.textContent = "Processing Video";
@@ -1583,6 +1574,17 @@ document.addEventListener('DOMContentLoaded', () => {
         renderVideo.src = state.objectUrl;
         renderVideo.muted = true;
         renderVideo.playsInline = true;
+
+        // Force append video element to DOM to prevent resource sleeps
+        renderVideo.style.position = 'absolute';
+        renderVideo.style.top = '0';
+        renderVideo.style.left = '0';
+        renderVideo.style.width = '1px';
+        renderVideo.style.height = '1px';
+        renderVideo.style.opacity = '0.01';
+        renderVideo.style.pointerEvents = 'none';
+        document.body.appendChild(renderVideo);
+
         await new Promise(r => renderVideo.onloadedmetadata = r);
 
         const canvas = document.createElement('canvas');
@@ -1627,23 +1629,42 @@ document.addEventListener('DOMContentLoaded', () => {
             state.mediaRecorder = new MediaRecorder(canvasStream);
         }
 
+        const cleanUpDOMVideo = () => {
+            try {
+                if (renderVideo.parentNode) {
+                    renderVideo.parentNode.removeChild(renderVideo);
+                }
+            } catch(e) {}
+        };
+
         state.mediaRecorder.ondataavailable = (e) => {
             if (e.data.size > 0) state.recordedChunks.push(e.data);
         };
 
         state.mediaRecorder.onstop = () => {
+            cleanUpDOMVideo();
             const blob = new Blob(state.recordedChunks, { type: state.mediaRecorder.mimeType || 'video/webm' });
             state.restoredBlob = blob;
             state.processing = false;
+
+            // Load completed file directly into preview element for instant validation!
+            const newObjectUrl = URL.createObjectURL(blob);
+            elements.previewVideo.src = newObjectUrl;
+            elements.previewVideo.loop = true;
+            elements.previewVideo.play().catch(() => {});
             
             elements.processingModal.classList.remove('show');
             elements.processBtn.classList.add('hidden');
             elements.downloadBtn.classList.remove('hidden');
-            showToast("Video fully processed! Ready to save.");
+            showToast("Video fully processed! play preview or click download.");
         };
 
         state.mediaRecorder.start();
-        renderVideo.play();
+        renderVideo.play().catch(e => {
+            console.error("Playback start failed:", e);
+            // Try fallback trigger
+            renderVideo.dispatchEvent(new Event('play'));
+        });
 
         function processLoop() {
             if (!state.processing) {
@@ -1651,17 +1672,30 @@ document.addEventListener('DOMContentLoaded', () => {
                     renderVideo.pause();
                     state.mediaRecorder.stop();
                 } catch(e) {}
+                cleanUpDOMVideo();
                 return;
             }
 
-            if (renderVideo.paused || renderVideo.ended) {
-                if (renderVideo.ended) state.mediaRecorder.stop();
+            const curTime = renderVideo.currentTime;
+            const percent = Math.min(100, Math.round((curTime / renderVideo.duration) * 100));
+
+            // Bulletproof completion check: trigger stop if duration margin is met
+            if (percent >= 100 || renderVideo.ended || curTime >= renderVideo.duration - 0.08) {
+                elements.progressPercent.textContent = "100%";
+                elements.progressBarFill.style.width = "100%";
+                try {
+                    renderVideo.pause();
+                    state.mediaRecorder.stop();
+                } catch(e) {}
                 return;
+            }
+
+            // Auto-resume if browser suspends playback due to focus shifts
+            if (renderVideo.paused && !renderVideo.ended) {
+                renderVideo.play().catch(() => {});
             }
 
             ctx.drawImage(renderVideo, 0, 0, canvas.width, canvas.height);
-
-            const curTime = renderVideo.currentTime;
 
             state.boxes.forEach(box => {
                 if (box.selected && curTime >= box.startTime && curTime <= box.endTime) {
@@ -1671,7 +1705,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             previewCtx.drawImage(canvas, 0, 0, elements.renderPreviewCanvas.width, elements.renderPreviewCanvas.height);
 
-            const percent = Math.min(100, Math.round((curTime / renderVideo.duration) * 100));
             elements.progressPercent.textContent = percent + "%";
             elements.progressBarFill.style.width = percent + "%";
 
