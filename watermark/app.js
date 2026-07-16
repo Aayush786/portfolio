@@ -87,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
         toast: document.getElementById('toast'),
         toastMsg: document.getElementById('toast-msg'),
 
-        // New Advanced Elements
+        // Advanced Elements
         toolBox: document.getElementById('tool-box'),
         toolBrush: document.getElementById('tool-brush'),
         toolClone: document.getElementById('tool-clone'),
@@ -118,7 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.toast.className = `toast show toast-${type}`;
         setTimeout(() => {
             elements.toast.classList.remove('show');
-        }, 4500); // 4.5 seconds so users can read compatibility tips
+        }, 4500);
     }
 
     // Helper: Format bytes
@@ -142,7 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (logoLink) {
         logoLink.addEventListener('click', (e) => {
             e.preventDefault();
-            elements.resetBtn.click(); // Reset state
+            elements.resetBtn.click(); // Reset back to home screen
         });
     }
 
@@ -201,7 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.editorView.classList.add('hidden');
         elements.uploadView.classList.remove('hidden');
 
-        // Clear dynamic elements
+        // Clear canvases
         const brushCtx = elements.brushMaskCanvas.getContext('2d');
         brushCtx.clearRect(0, 0, elements.brushMaskCanvas.width, elements.brushMaskCanvas.height);
         
@@ -269,28 +269,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Layout Scale Sync
+    // Fixed Scaling sync: Align with active media dimensions directly (ignores wrapper aspect stretch)
     function recalculateScaling() {
-        const wrapperRect = elements.mediaWrapper.getBoundingClientRect();
-        let displayedWidth, displayedHeight;
-        const mediaRatio = state.originalWidth / state.originalHeight;
-        const viewportRatio = wrapperRect.width / wrapperRect.height;
+        const activeMediaEl = state.fileType === 'image' ? elements.previewImage : elements.previewVideo;
+        const displayedWidth = activeMediaEl.clientWidth;
+        const displayedHeight = activeMediaEl.clientHeight;
 
-        if (mediaRatio > viewportRatio) {
-            displayedWidth = wrapperRect.width;
-            displayedHeight = wrapperRect.width / mediaRatio;
-        } else {
-            displayedHeight = wrapperRect.height;
-            displayedWidth = wrapperRect.height * mediaRatio;
+        // If media is not fully laid out yet, wait and retry
+        if (!displayedWidth || !displayedHeight) {
+            setTimeout(recalculateScaling, 40);
+            return;
         }
 
-        elements.interactiveOverlay.style.width = displayedWidth + 'px';
-        elements.interactiveOverlay.style.height = displayedHeight + 'px';
+        // Align overlay bounding canvas exactly over client margins
+        const offsetLeft = activeMediaEl.offsetLeft;
+        const offsetTop = activeMediaEl.offsetTop;
 
-        elements.brushMaskCanvas.style.width = displayedWidth + 'px';
-        elements.brushMaskCanvas.style.height = displayedHeight + 'px';
-        elements.heatmapCanvas.style.width = displayedWidth + 'px';
-        elements.heatmapCanvas.style.height = displayedHeight + 'px';
+        [elements.interactiveOverlay, elements.brushMaskCanvas, elements.heatmapCanvas].forEach(el => {
+            el.style.width = displayedWidth + 'px';
+            el.style.height = displayedHeight + 'px';
+            el.style.left = offsetLeft + 'px';
+            el.style.top = offsetTop + 'px';
+        });
 
         state.scaleX = state.originalWidth / displayedWidth;
         state.scaleY = state.originalHeight / displayedHeight;
@@ -337,7 +337,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.previewVideo.currentTime = time;
         elements.timelineCurrentTime.textContent = formatTime(time);
         elements.timelinePlayheadFill.style.width = (time / state.videoDuration * 100) + '%';
-        renderBoxes(); // Refresh box visibility
+        renderBoxes(); 
     }
 
     function updatePlaybackProgress() {
@@ -346,7 +346,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.timelineSlider.value = Math.floor(time * 100);
         elements.timelineCurrentTime.textContent = formatTime(time);
         elements.timelinePlayheadFill.style.width = (time / state.videoDuration * 100) + '%';
-        renderBoxes(); // Sync temporal range boxes on overlay
+        renderBoxes(); 
         requestAnimationFrame(updatePlaybackProgress);
     }
 
@@ -387,7 +387,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         elements.brushSizeControl.classList.toggle('hidden', mode === 'box');
         
-        // Update overlay cursor
         if (mode === 'box') {
             elements.interactiveOverlay.style.cursor = 'crosshair';
             elements.brushMaskCanvas.style.pointerEvents = 'none';
@@ -472,7 +471,6 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.renderPreviewCanvas.width = wScan;
         elements.renderPreviewCanvas.height = hScan;
 
-        // Frames buffer
         const frames = [];
 
         for (let i = 0; i < samplePoints; i++) {
@@ -499,7 +497,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const avgImgData = avgCtx.createImageData(wScan, hScan);
         const avgData = avgImgData.data;
 
-        // Variance Map
         const varCanvas = document.createElement('canvas');
         varCanvas.width = wScan;
         varCanvas.height = hScan;
@@ -528,7 +525,6 @@ document.addEventListener('DOMContentLoaded', () => {
             avgData[offset + 2] = Math.round(meanB);
             avgData[offset + 3] = 255;
 
-            // Variance: sum((x - mean)^2) / N
             let sqSumR = 0, sqSumG = 0, sqSumB = 0;
             for (let f = 0; f < N; f++) {
                 sqSumR += Math.pow(frames[f][offset] - meanR, 2);
@@ -538,9 +534,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const stdDev = Math.sqrt((sqSumR + sqSumG + sqSumB) / (3 * N));
             const staticWeight = Math.max(0, 255 - stdDev * 4);
-            varData[offset] = Math.round(staticWeight); // Red path
+            varData[offset] = Math.round(staticWeight); 
             varData[offset + 1] = 0;
-            varData[offset + 2] = Math.round(staticWeight * 0.8); // Purple hues
+            varData[offset + 2] = Math.round(staticWeight * 0.8); 
             varData[offset + 3] = 255;
         }
 
@@ -640,7 +636,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (pass && varCtx) {
                     const varVal = varCtx.getImageData(x, y, 1, 1).data[0]; 
-                    pass = varVal > 80; // must be static
+                    pass = varVal > 80; 
                 }
 
                 edges[y * dWidth + x] = pass ? 255 : 0;
@@ -707,6 +703,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
+        // fallbacks selected by default for direct removal demo
         if (state.boxes.length === 0) {
             state.boxes.push({
                 id: 'suggest-br',
@@ -714,8 +711,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 y: Math.round(state.originalHeight * 0.84),
                 w: Math.round(state.originalWidth * 0.22),
                 h: Math.round(state.originalHeight * 0.12),
-                label: 'Suggest Target',
-                selected: false,
+                label: 'Suggested Box',
+                selected: true,
                 startTime: 0,
                 endTime: state.videoDuration || 0,
                 isBrushMask: false,
@@ -739,7 +736,6 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('mousemove', handleDrawMove);
     window.addEventListener('mouseup', handleDrawEnd);
 
-    // FREEHAND MASK BRUSH DRAWING
     function handleBrushStart(e) {
         if (state.toolMode !== 'brush') return;
         state.isBrushing = true;
@@ -820,7 +816,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // BOX AND CLONE DRAGGING
     function handleDrawStart(e) {
         if (state.activeResizer) return;
 
@@ -1036,7 +1031,6 @@ document.addEventListener('DOMContentLoaded', () => {
         updateDetectionsList();
     }
 
-    // Box Focus highlights
     function selectBox(id) {
         state.activeBoxId = id;
         document.querySelectorAll('.bounding-box').forEach(el => {
@@ -1081,7 +1075,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Render Bounding Boxes & Clone Stamp pointers on screen
+    // Render overlays
     function renderBoxes() {
         const oldBoxes = elements.interactiveOverlay.querySelectorAll('.bounding-box, .clone-source-indicator, .clone-connector-line');
         oldBoxes.forEach(b => b.remove());
@@ -1142,7 +1136,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             el.appendChild(close);
 
-            // Handles (Active focus)
+            // Handles
             if (state.activeBoxId === box.id) {
                 const directions = ['nw', 'ne', 'se', 'sw', 'n', 's', 'e', 'w'];
                 directions.forEach(dir => {
@@ -1159,13 +1153,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const sX = bX + (bW / 2) + (box.cloneOffset.x / state.scaleX);
                 const sY = bY + (bH / 2) + (box.cloneOffset.y / state.scaleY);
 
-                // Connector line
                 const line = document.createElement('div');
                 line.className = 'clone-connector-line';
-                
                 const startX = bX + (bW / 2);
                 const startY = bY + (bH / 2);
-                
                 const dist = Math.sqrt(Math.pow(sX - startX, 2) + Math.pow(sY - startY, 2));
                 const angle = Math.atan2(sY - startY, sX - startX) * 180 / Math.PI;
 
@@ -1175,7 +1166,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 line.style.transform = `rotate(${angle}deg)`;
                 elements.interactiveOverlay.appendChild(line);
 
-                // Source Node circle
                 const sourceNode = document.createElement('div');
                 sourceNode.className = 'clone-source-indicator';
                 sourceNode.dataset.id = box.id;
@@ -1274,8 +1264,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     removeBox(box.id);
                 } else if (e.target.closest('.detection-checkbox') || e.target.classList.contains('detection-checkbox')) {
                     toggleBoxSelection(box.id);
-                } else if (e.target.closest('.item-range-container')) {
-                    // range clicks
                 } else {
                     selectBox(box.id);
                 }
@@ -1301,7 +1289,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Fixed Onion Diffusion: No coordinate shifting
+    // Onion Diffusion: No coordinate shifting
     function runOnionDiffusion(ctx, box) {
         const margin = 10;
         
@@ -1326,11 +1314,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const imgData = ctx.getImageData(srcX, srcY, srcW, srcH);
         const pixels = imgData.data;
 
-        // Mask mapping: 1 means we need to inpaint this pixel
+        // Mask mapping
         const mask = new Uint8Array(srcW * srcH);
 
         if (box.isBrushMask) {
-            // Retrieve custom painted mask strokes
             const maskTempCanvas = document.createElement('canvas');
             maskTempCanvas.width = state.originalWidth;
             maskTempCanvas.height = state.originalHeight;
@@ -1345,7 +1332,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         } else {
-            // Bounding box fill mask: relative to expanded (ex1, ey1)
             const maskLeft = x1 - ex1;
             const maskTop = y1 - ey1;
             const maskRight = x2 - ex1;
@@ -1360,7 +1346,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Initialize outer boundary coordinates queue
+        // Boundary queue
         let queue = [];
         for (let y = 0; y < srcH; y++) {
             for (let x = 0; x < srcW; x++) {
@@ -1378,7 +1364,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Propagate background colors inwards
+        // Diffuse
         while (queue.length > 0) {
             const nextQueue = [];
             for (let i = 0; i < queue.length; i++) {
@@ -1411,7 +1397,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     pixels[offset] = Math.round(rSum / count);
                     pixels[offset + 1] = Math.round(gSum / count);
                     pixels[offset + 2] = Math.round(bSum / count);
-                    mask[idx] = 0; // Solved
+                    mask[idx] = 0; 
 
                     dirs.forEach(n => {
                         if (mask[n] === 1) {
@@ -1423,7 +1409,7 @@ document.addEventListener('DOMContentLoaded', () => {
             queue = nextQueue;
         }
 
-        // Blending edge seams
+        // Blending seams
         if (state.feather > 0 && !box.isBrushMask) {
             const maskLeft = x1 - ex1;
             const maskTop = y1 - ey1;
@@ -1467,7 +1453,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.putImageData(imgData, srcX, srcY);
     }
 
-    // Smart Clone Stamp: Clones from current frame buffer (avoids self-feedback artifacts)
+    // Clone stamp
     function runSmartClone(ctx, box) {
         const xVal = Math.max(0, box.x);
         const yVal = Math.max(0, box.y);
@@ -1482,14 +1468,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const canvasWidth = state.originalWidth;
         const canvasHeight = state.originalHeight;
 
-        // Fetch current canvas frame context
         const currentImgData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
         const currentPixels = currentImgData.data;
 
-        // Duplicate pixel buffer to read uncorrupted textures
+        // Clone reference from current frame buffer (avoids self feedback)
         const tempPixels = new Uint8ClampedArray(currentPixels);
 
-        // Clone target mask
         for (let y = yVal; y < yVal + hVal; y++) {
             for (let x = xVal; x < xVal + wVal; x++) {
                 const srcX = Math.max(0, Math.min(canvasWidth - 1, x + dx));
@@ -1552,7 +1536,6 @@ document.addEventListener('DOMContentLoaded', () => {
             elements.cleanImageBg.src = restoredUrl;
             elements.originalImageFg.src = state.objectUrl;
 
-            // Trigger slider widgets
             elements.compSlider.value = 50;
             elements.originalImageFg.style.clipPath = `polygon(0 0, 50% 0, 50% 100%, 0 100%)`;
             elements.compDivider.style.left = `50%`;
@@ -1575,7 +1558,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 400);
     }
 
-    // Video Export (Fixed playability)
+    // Video Export
     async function processVideo() {
         state.processing = true;
         elements.statusTitle.textContent = "Processing Video";
@@ -1600,7 +1583,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.renderPreviewCanvas.width = 320;
         elements.renderPreviewCanvas.height = Math.round(320 * (state.originalHeight / state.originalWidth));
 
-        // Audio stream tracking: extract from render video during playback
+        // Audio extraction from hidden rendering element
         let audioTrack = null;
         try {
             const renderStream = renderVideo.captureStream ? renderVideo.captureStream() : renderVideo.mozCaptureStream();
@@ -1619,7 +1602,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         state.recordedChunks = [];
         
-        // Optimizing codec selection for maximum playability (Priority H.264/AAC > VP9 > VP8)
+        // Optimizing codec selection for maximum playability (H.264/AAC WebM/MP4 > VP9/VP8)
         let options = { mimeType: 'video/webm;codecs=h264,opus' };
         if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/webm;codecs=h264' };
         if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/mp4;codecs=h264,aac' };
@@ -1725,7 +1708,6 @@ document.addEventListener('DOMContentLoaded', () => {
         link.click();
         document.body.removeChild(link);
 
-        // Tell user how to play WebM files if it downloads as WebM
         if (ext === 'webm') {
             showToast("File downloaded! Tip: Open WebM files in Google Chrome or VLC Media Player.", "success");
         } else {
